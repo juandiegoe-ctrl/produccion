@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Producción Estona</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<div class="logo"><img src="assets/logo-estona.png" alt="Estona"></div>
+<div class="nav"><button class="active">Órdenes de producción</button></div>
+<div class="user"><strong>Producción</strong><small>Portal independiente</small></div>
+</aside>
+<main>
+<header class="top"><div><h1>Portal Producción Estona</h1><p>Gestión interna de órdenes e ítems de producción.</p></div><button id="newOrder" class="btn primary">+ Nueva orden</button></header>
+<section id="kpis" class="kpis"></section>
+<section class="filters"><label><span>Buscar</span><input id="search" placeholder="OP, cliente o producto"></label></section>
+<section id="list"></section>
+</main>
+</div>
+<div id="drawer" class="drawer hidden"></div>
+<script src="js/app.js"></script>
+</body>
+</html>
