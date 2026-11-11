@@ -129,3 +129,5 @@
   .print-mixtures-table tr{break-inside:avoid;page-break-inside:avoid}
   .print-mixtures-table th,.print-mixtures-table td{font-size:9px;padding:5px}
 }
+
+#items .item-card-v58 .item-code{font-size:24px!important;line-height:1.15!important;font-weight:850;letter-spacing:.02em;font-variant-numeric:tabular-nums;margin-bottom:4px}
