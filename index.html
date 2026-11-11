@@ -3353,6 +3353,7 @@ function renderAll(){
   renderList();
 }
 function closeDrawer(){
+  $('#drawer')._mixturePanel?.close({force:true,restoreFocus:false});
   $('#drawer').classList.add('hidden');
   $('#drawer').innerHTML='';
 }
@@ -3422,6 +3423,7 @@ async function loadOrders({openRequested=true}={}){
 
 async function openNew(){
   const drawer=$('#drawer');
+  drawer._mixturePanel?.close({force:true,restoreFocus:false});
   drawer._mixtures=null;
   drawer._reloadDosageRecords=null;
   drawer.innerHTML=`<div class="drawer-card">
@@ -3477,6 +3479,7 @@ async function openOrder(id){
   if(!order) return;
 
   const drawer=$('#drawer');
+  drawer._mixturePanel?.close({force:true,restoreFocus:false});
   drawer._mixtures=null;
   drawer._reloadDosageRecords=null;
   drawer.innerHTML=`<div class="drawer-card order-drawer">
@@ -4000,7 +4003,7 @@ async function openOrder(id){
               : '—'}</strong></div>
             <div><small>Peso fabricado</small><strong>${Number(row.total_kg||0).toLocaleString('es-CO',{maximumFractionDigits:3})} kg</strong></div>
             <div><small>Registrado</small><strong>${row.created_at
-              ? new Date(row.created_at).toLocaleString('es-CO')
+              ? new Date(row.created_at).toLocaleString('es-CO',{timeZone:'America/Bogota'})
               : '—'}</strong></div>
           </div>
 
@@ -4051,10 +4054,8 @@ async function openOrder(id){
           </div>
         `;
 
-        detail.querySelector('#closeDosageDetail').onclick=()=>{
-          detail.classList.add('hidden');
-        };
-        detail.scrollIntoView({behavior:'smooth',block:'start'});
+        const side=openMixtureSidePanel(drawer,{title:'Dosificación guardada',content:detail,trigger:button});
+        detail.querySelector('#closeDosageDetail').onclick=()=>side?.close();
       };
     });
 
@@ -4067,7 +4068,7 @@ async function openOrder(id){
         form.classList.remove('hidden');
         form.dataset.editing=row.id;
 
-        drawer.querySelector('#orderDosageDate').value=row.fecha_fundida||new Date().toISOString().slice(0,10);
+        drawer.querySelector('#orderDosageDate').value=row.fecha_fundida||new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Bogota'}).format(new Date());
         drawer.querySelector('#orderDosageKg').value=row.total_kg||0;
         drawer.querySelector('#orderPigmentName').value=row.pigmento_nombre||'';
         drawer.querySelector('#orderPigmentPercent').value=row.pigmento_porcentaje||0;
@@ -4081,7 +4082,7 @@ async function openOrder(id){
         drawer.querySelector('#saveOrderDosage').textContent='GUARDAR CAMBIOS';
 
         renderOrderDosagePreview();
-        form.scrollIntoView({behavior:'smooth',block:'start'});
+        openMixtureSidePanel(drawer,{title:'Editar registro de mezcla',content:form,trigger:button});
       };
     });
 
@@ -4123,7 +4124,7 @@ async function openOrder(id){
     form.classList.remove('hidden');
     form.dataset.editing='';
     drawer.querySelector('#saveOrderDosage').textContent='REGISTRAR FUNDIDA';
-    drawer.querySelector('#orderDosageDate').value=new Date().toISOString().slice(0,10);
+    drawer.querySelector('#orderDosageDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Bogota'}).format(new Date());
     drawer.querySelector('#orderDosageKg').value=100;
     drawer.querySelector('#orderPigmentName').value='';
     drawer.querySelector('#orderPigmentPercent').value=0;
@@ -4135,9 +4136,11 @@ async function openOrder(id){
     drawer.querySelector('#orderGrain3Percent').value=0;
     drawer.querySelector('#orderDosageNote').value='';
     renderOrderDosagePreview();
+    openMixtureSidePanel(drawer,{title:'Registrar mezcla',content:form});
   };
 
   drawer.querySelector('#closeOrderDosageForm').onclick=()=>{
+    drawer._mixturePanel?.close();
     const form=drawer.querySelector('#orderDosageForm');
     form.classList.add('hidden');
     form.dataset.editing='';
@@ -4171,54 +4174,65 @@ async function openOrder(id){
 
     button.disabled=true;
     button.textContent='REGISTRANDO...';
+    const side=drawer._mixturePanel;
+    side?.setBusy(true);
+    try{
 
-    const payload={
-      orden_id:order.id,
-      fecha_fundida:date,
-      total_kg:values.totalKg,
-      pigmento_nombre:values.pigmentName,
-      grano_1_nombre:values.grain1Name,
-      grano_2_nombre:values.grain2Name,
-      grano_3_nombre:values.grain3Name,
-      pigmento_porcentaje:values.pigmentPercent,
-      grano_1_porcentaje:values.grain1Percent,
-      grano_2_porcentaje:values.grain2Percent,
-      grano_3_porcentaje:values.grain3Percent,
-      componentes:Object.fromEntries(values.components.map(component=>[
-        component.name,
-        {cantidad:component.calculated,unidad:component.unit}
-      ])),
-      observacion:drawer.querySelector('#orderDosageNote').value.trim()||null
-    };
+      const payload={
+        orden_id:order.id,
+        fecha_fundida:date,
+        total_kg:values.totalKg,
+        pigmento_nombre:values.pigmentName,
+        grano_1_nombre:values.grain1Name,
+        grano_2_nombre:values.grain2Name,
+        grano_3_nombre:values.grain3Name,
+        pigmento_porcentaje:values.pigmentPercent,
+        grano_1_porcentaje:values.grain1Percent,
+        grano_2_porcentaje:values.grain2Percent,
+        grano_3_porcentaje:values.grain3Percent,
+        componentes:Object.fromEntries(values.components.map(component=>[
+          component.name,
+          {cantidad:component.calculated,unidad:component.unit}
+        ])),
+        observacion:drawer.querySelector('#orderDosageNote').value.trim()||null
+      };
 
-    const form=drawer.querySelector('#orderDosageForm');
-    const editingId=form.dataset.editing;
-    let error;
+      const form=drawer.querySelector('#orderDosageForm');
+      const editingId=form.dataset.editing;
+      let error;
 
-    if(editingId){
-      ({error}=await db
-        .from('registros_dosificacion')
-        .update(payload)
-        .eq('id',editingId));
-    }else{
-      ({error}=await db
-        .from('registros_dosificacion')
-        .insert(payload));
-    }
+      if(editingId){
+        ({error}=await db
+          .from('registros_dosificacion')
+          .update(payload)
+          .eq('id',editingId));
+      }else{
+        ({error}=await db
+          .from('registros_dosificacion')
+          .insert(payload));
+      }
 
-    if(error){
-      alert(error.message);
+      if(error){
+        alert(error.message);
+        button.disabled=false;
+        button.textContent='REGISTRAR FUNDIDA';
+        return;
+      }
+
+      side?.close({force:true});
+      drawer.querySelector('#orderDosageForm').classList.add('hidden');
+      drawer.querySelector('#orderDosageForm').dataset.editing='';
+      drawer.querySelector('#orderDosageNote').value='';
       button.disabled=false;
       button.textContent='REGISTRAR FUNDIDA';
-      return;
+      await loadOrderDosageRecords();
+    }catch(error){
+      alert(error.message||'No se pudo guardar el registro.');
+    }finally{
+      side?.setBusy(false);
+      button.disabled=false;
+      button.textContent='REGISTRAR FUNDIDA';
     }
-
-    drawer.querySelector('#orderDosageForm').classList.add('hidden');
-    drawer.querySelector('#orderDosageForm').dataset.editing='';
-    drawer.querySelector('#orderDosageNote').value='';
-    button.disabled=false;
-    button.textContent='REGISTRAR FUNDIDA';
-    await loadOrderDosageRecords();
   };
 
   drawer._reloadDosageRecords=loadOrderDosageRecords;

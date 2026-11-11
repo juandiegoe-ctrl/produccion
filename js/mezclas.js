@@ -67,6 +67,46 @@ function buildProductionDosageRecord(recipe,item,orderId,weight,date,id){
   return payload;
 }
 
+function openMixtureSidePanel(drawer,{title,content=null,trigger=document.activeElement,onClose=null}){
+  if(drawer._mixturePanel && !drawer._mixturePanel.close({restoreFocus:false}))return null;
+  const dialog=document.createElement('dialog');
+  dialog.className='dosage-side-panel';
+  dialog.setAttribute('aria-labelledby','dosagePanelTitle');
+  dialog.innerHTML=`<header class="dosage-panel-header"><h3 id="dosagePanelTitle">${esc(title)}</h3><button type="button" class="dosage-panel-close" aria-label="Cerrar ${esc(title.toLowerCase())}" title="Cerrar">✕</button></header><div class="item-mixture-result mixture-panel-content"></div>`;
+  const body=dialog.querySelector('.mixture-panel-content');
+  const closeButton=dialog.querySelector('.dosage-panel-close');
+  const placeholder=content?document.createComment('mixture-panel-origin'):null;
+  if(content){content.before(placeholder);body.append(content);content.classList.remove('hidden')}
+  let busy=false;
+  let finished=false;
+  const panel={dialog,body,closeButton,
+    setBusy(value){busy=value;closeButton.disabled=value},
+    close({force=false,restoreFocus=true}={}){
+      if(busy&&!force)return false;
+      if(finished)return true;
+      finished=true;
+      if(dialog.open)dialog.close();
+      if(content){
+        content.classList.add('hidden');
+        if(placeholder.isConnected)placeholder.replaceWith(content);
+        else content.remove();
+      }
+      dialog.remove();
+      if(drawer._mixturePanel===panel)drawer._mixturePanel=null;
+      onClose?.();
+      if(restoreFocus && trigger?.isConnected && trigger.checkVisibility())trigger.focus({preventScroll:true});
+      return true;
+    }
+  };
+  closeButton.onclick=()=>panel.close();
+  dialog.addEventListener('cancel',event=>{event.preventDefault();panel.close()});
+  dialog.addEventListener('close',()=>panel.close(),{once:true});
+  drawer._mixturePanel=panel;
+  drawer.append(dialog);
+  dialog.showModal();
+  return panel;
+}
+
 async function mountProductionMixtures(drawer,order){
   const panel=drawer.querySelector('#mixtureLibrary');
   if(!panel)return;
@@ -110,7 +150,8 @@ async function mountProductionMixtures(drawer,order){
       <p id="mixtureSaveStatus" role="status"></p>
       <div class="mixture-actions"><button class="btn primary" type="submit">Guardar mezcla</button><button class="btn secondary" type="button" id="cancelMixture">Cancelar</button></div>
     </form>`;
-  const q=s=>panel.querySelector(s);
+  const editor=panel.querySelector('#mixtureEditor');
+  const q=selector=>panel.querySelector(selector)||(editor.matches(selector)?editor:editor.querySelector(selector));
   const setStatus=(message,error=false)=>{q('#mixtureLibraryStatus').textContent=message;q('#mixtureLibraryStatus').classList.toggle('mixture-error',error)};
   const getRecipe=()=>{
     const recipe={nombre:q('#mixtureName').value.trim(),cemento_tipo:q('#mixtureCementType').value,arena_fina_color:q('#mixFineSandColor').value.trim(),arena_gruesa_color:q('#mixCoarseSandColor').value.trim()};
@@ -153,8 +194,8 @@ async function mountProductionMixtures(drawer,order){
     });
     q('#mixtureSaveStatus').textContent='';
     q('#mixtureSaveStatus').classList.remove('mixture-error');
-    q('#mixtureEditor').classList.remove('hidden');
-    q('#mixtureName').focus();
+    openMixtureSidePanel(drawer,{title:recipe?'Editar mezcla':'Crear mezcla',content:editor});
+    q('#mixtureName').focus({preventScroll:true});
   };
   const recipeTags=recipe=>{
     if(!recipe)return '';
@@ -167,24 +208,11 @@ async function mountProductionMixtures(drawer,order){
     q('#mixtureLibraryList').querySelectorAll('[data-edit-mixture]').forEach(button=>button.onclick=()=>openEditor(recipes.find(r=>r.id===button.dataset.editMixture)));
   };
   const renderDosage=async(host,item)=>{
-    drawer.querySelector('.dosage-side-panel')?.close();
     const button=host.querySelector('.mixture-generate');
     const select=host.querySelector('select');
-    const dialog=document.createElement('dialog');
-    const panelState={saving:false};
-    dialog.className='dosage-side-panel';
-    dialog.setAttribute('aria-labelledby','dosagePanelTitle');
-    dialog.innerHTML=`<header class="dosage-panel-header"><h3 id="dosagePanelTitle">Dosificación</h3><button type="button" class="dosage-panel-close" aria-label="Cerrar dosificación" title="Cerrar">✕</button></header><div class="item-mixture-result" aria-live="polite"></div>`;
-    const closeButton=dialog.querySelector('.dosage-panel-close');
-    const result=dialog.querySelector('.item-mixture-result');
-    closeButton.onclick=()=>{if(!panelState.saving)dialog.close()};
-    dialog.addEventListener('cancel',event=>{if(panelState.saving)event.preventDefault()});
-    dialog.addEventListener('close',()=>{
-      dialog.remove();
-      if(button.isConnected && button.checkVisibility())button.focus({preventScroll:true});
-    },{once:true});
-    drawer.append(dialog);
-    dialog.showModal();
+    const side=openMixtureSidePanel(drawer,{title:'Dosificación',trigger:button});
+    if(!side)return;
+    const {dialog,body:result}=side;
     button.disabled=true;select.disabled=true;
     result.textContent='Calculando dosificación…';result.classList.remove('hidden','mixture-error');
     try{
@@ -235,7 +263,7 @@ async function mountProductionMixtures(drawer,order){
         try{
           registrationId ||= crypto.randomUUID();
           const payload=buildProductionDosageRecord(recipe,item,order.id,kgInput.value,dateInput.value,registrationId);
-          saving=true;panelState.saving=true;closeButton.disabled=true;register.disabled=true;kgInput.disabled=true;dateInput.disabled=true;select.disabled=true;button.disabled=true;
+          saving=true;side.setBusy(true);register.disabled=true;kgInput.disabled=true;dateInput.disabled=true;select.disabled=true;button.disabled=true;
           register.textContent='Guardando…';status.textContent='';status.classList.remove('mixture-error');
           let {data,error}=await db.from('registros_dosificacion').insert(payload).select('id').single();
           if(error?.code==='23505'){
@@ -244,7 +272,7 @@ async function mountProductionMixtures(drawer,order){
           if(error)throw error;
           if(data?.id!==registrationId)throw Error('No se pudo confirmar el registro.');
           registered=true;register.textContent='Guardado';status.textContent='Dosificación registrada.';
-          dialog.close();
+          side.close({force:true,restoreFocus:false});
           try{
             if(isCurrent()){
               await drawer._reloadDosageRecords?.();
@@ -255,7 +283,7 @@ async function mountProductionMixtures(drawer,order){
             }
           }catch(error){status.textContent='Registrado. No se pudo actualizar el listado.'}
         }catch(error){status.textContent=error.message||'No se pudo registrar la dosificación.';status.classList.add('mixture-error');register.textContent='Guardar'}
-        finally{saving=false;panelState.saving=false;closeButton.disabled=false;register.disabled=registered;kgInput.disabled=false;dateInput.disabled=false;select.disabled=false;button.disabled=false}
+        finally{saving=false;side.setBusy(false);register.disabled=registered;kgInput.disabled=false;dateInput.disabled=false;select.disabled=false;button.disabled=false}
       };
       recalculate();
       kgInput.focus({preventScroll:true});
@@ -308,26 +336,27 @@ async function mountProductionMixtures(drawer,order){
   };
   drawer._mixtures={renderItems};
   q('#newMixture').onclick=()=>openEditor(null);
-  q('#cancelMixture').onclick=()=>q('#mixtureEditor').classList.add('hidden');
+  q('#cancelMixture').onclick=()=>drawer._mixturePanel?.close();
   q('#mixtureEditor').onsubmit=async event=>{
     event.preventDefault();
     const button=q('[type="submit"]');
+    const side=drawer._mixturePanel;
     try{
       const recipe=validateProductionMixture(getRecipe());
-      button.disabled=true;q('#mixtureSaveStatus').textContent='Guardando…';
+      button.disabled=true;side?.setBusy(true);q('#mixtureSaveStatus').textContent='Guardando…';
       const query=editingId?db.from('mezclas_produccion').update(recipe).eq('id',editingId):db.from('mezclas_produccion').insert(recipe);
       const {data,error}=await query.select('id').single();
       if(error)throw error;
       if(!data)throw Error('No se pudo confirmar el guardado.');
       if(!isCurrent())return;
-      q('#mixtureEditor').classList.add('hidden');
+      side?.close({force:true});
       await reload();
       setStatus('Mezcla guardada.');
     }catch(error){
       if(!isCurrent())return;
       q('#mixtureSaveStatus').textContent=storageError(error);q('#mixtureSaveStatus').classList.add('mixture-error');
       if(q('#mixtureEditor').classList.contains('hidden'))setStatus('La mezcla se guardó, pero no se pudo actualizar el listado. Vuelve a abrir la orden.',true);
-    }finally{button.disabled=false}
+    }finally{button.disabled=false;side?.setBusy(false)}
   };
   try{await reload()}catch(error){if(isCurrent()){setStatus('No se pudieron cargar las mezclas: '+storageError(error),true);q('#newMixture').disabled=true}}
 }

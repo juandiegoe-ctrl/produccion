@@ -85,3 +85,7 @@ se consultan como una copia fija de la dosificación utilizada. La ampliación
 
 La dosificación se abre en un panel a la izquierda. **Guardar** registra la mezcla
 y cierra el panel; **X** o Escape lo cierran sin guardar.
+
+Crear y editar recetas, consultar dosificaciones guardadas y crear o editar
+registros manuales usan el mismo panel izquierdo. Al cerrarlo, los formularios
+vuelven a su ubicación oculta sin ampliar los listados.

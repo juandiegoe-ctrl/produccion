@@ -56,3 +56,18 @@
 .dosage-side-panel .item-dosage-register{min-height:42px;width:100%}
 @media(max-width:520px){.dosage-panel-header{padding:12px 14px}.dosage-side-panel .item-mixture-result{padding:14px}}
 @media print{.dosage-side-panel{display:none!important}.dosage-side-panel::backdrop{display:none!important}}
+
+/* Every mixture editor and saved dosage uses the same left panel. */
+.dosage-side-panel #mixtureEditor{margin:0;padding:0;border:0}
+.dosage-side-panel #mixtureEditorTitle,.dosage-side-panel #orderDosageForm>.section-head,.dosage-side-panel #closeDosageDetail{display:none!important}
+.dosage-side-panel #orderDosageDetail,.dosage-side-panel #orderDosageForm{margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+.dosage-side-panel .dosage-detail-summary,.dosage-side-panel .dosage-material-detail{grid-template-columns:repeat(2,minmax(0,1fr))}
+.dosage-side-panel .dosage-components-head,.dosage-side-panel .dosage-component-row{grid-template-columns:minmax(0,1fr) minmax(100px,auto);font-size:12px}
+.dosage-side-panel .dosage-component-row strong{overflow-wrap:anywhere;min-width:0}
+.dosage-side-panel .mix-table-head{display:none}
+.dosage-side-panel .mix-row{grid-template-columns:68px minmax(0,1fr) 66px!important;gap:6px!important;padding:8px!important}
+.dosage-side-panel .mix-row small{display:none}
+.dosage-side-panel .dosage-main-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+.dosage-side-panel .dosage-results{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+.dosage-side-panel .mix-row input{min-width:0;min-height:36px;padding:6px;font-size:12px}
