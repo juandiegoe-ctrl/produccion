@@ -41,7 +41,7 @@ async function mountProductionMixtures(drawer,order){
   let loading=false;
   const storageError=error=>error?.code==='23505'?'Ya existe una mezcla con ese nombre. Usa otro nombre.':(error?.message||'No se pudo guardar el cambio.');
   panel.innerHTML=`
-    <div class="section-head"><div><h3>Mezclas</h3><p>Crea recetas reutilizables y asígnalas a los ítems.</p></div><button type="button" class="btn primary" id="newMixture">+ Crear mezcla</button></div>
+    <div class="section-head"><div><h3>Mezclas</h3></div><button type="button" class="btn primary" id="newMixture">+ Crear mezcla</button></div>
     <p class="mixture-status" role="status" id="mixtureLibraryStatus">Cargando mezclas…</p>
     <div id="mixtureLibraryList"></div>
     <form id="mixtureEditor" class="hidden mixture-editor">
@@ -54,7 +54,6 @@ async function mountProductionMixtures(drawer,order){
         <div class="field"><label for="mixFineSandColor">Color de la arena fina</label><input id="mixFineSandColor" maxlength="120" required placeholder="Ej. Blanca"></div>
         <div class="field"><label for="mixCoarseSandColor">Color de la arena gruesa</label><input id="mixCoarseSandColor" maxlength="120" required placeholder="Ej. Gris"></div>
       </div>
-      <p>El agua, el aditivo y el carbonato se calculan automáticamente con la receta actual. Los granos se suman a la receta base, sin descontarlos de las arenas.</p>
       <div class="mixture-materials">
       ${MIXTURE_GRAINS.map(n=>`<fieldset class="mixture-grain"><legend>Grano ${n}</legend><div class="grid">
         <div class="field"><label for="mixGrainColor_${n}">Color / referencia</label><input id="mixGrainColor_${n}" maxlength="120" placeholder="Ej. Blanco Carrara"></div>
@@ -62,7 +61,6 @@ async function mountProductionMixtures(drawer,order){
         <div class="field"><label for="mixGrainPct_${n}">% sobre el peso del elemento</label><input id="mixGrainPct_${n}" type="number" min="0" max="100" step="0.0001" value="0" required></div>
       </div></fieldset>`).join('')}
       </div>
-      <p id="mixturePercentTotal" role="status"></p>
       <p id="mixtureSaveStatus" role="status"></p>
       <div class="mixture-actions"><button class="btn primary" type="submit">Guardar mezcla</button><button class="btn secondary" type="button" id="cancelMixture">Cancelar</button></div>
     </form>`;
@@ -72,11 +70,6 @@ async function mountProductionMixtures(drawer,order){
     const recipe={nombre:q('#mixtureName').value.trim(),cemento_tipo:q('#mixtureCementType').value,arena_fina_color:q('#mixFineSandColor').value.trim(),arena_gruesa_color:q('#mixCoarseSandColor').value.trim()};
     MIXTURE_GRAINS.forEach(n=>{recipe[`grano_${n}_color`]=q('#mixGrainColor_'+n).value.trim();recipe[`grano_${n}_tamano`]=q('#mixGrainSize_'+n).value.trim();recipe[`grano_${n}_pct`]=Number(q('#mixGrainPct_'+n).value)});
     return recipe;
-  };
-  const updateTotal=()=>{
-    const r=getRecipe();
-    const total=MIXTURE_GRAINS.reduce((sum,n)=>sum+r[`grano_${n}_pct`],0);
-    q('#mixturePercentTotal').textContent=`Granos adicionales: ${fmt(total)} kg por cada 100 kg de elemento.`;
   };
   const openEditor=recipe=>{
     editingId=recipe?.id||null;
@@ -91,14 +84,13 @@ async function mountProductionMixtures(drawer,order){
       q('#mixGrainSize_'+n).value=recipe?.[`grano_${n}_tamano`]||'';
       q('#mixGrainPct_'+n).value=recipe?.[`grano_${n}_pct`]||0;
     });
-    q('#mixtureSaveStatus').textContent=recipe?'Los cambios se aplicarán a las próximas dosificaciones de todos los ítems que usan esta mezcla.':'';
+    q('#mixtureSaveStatus').textContent='';
     q('#mixtureSaveStatus').classList.remove('mixture-error');
     q('#mixtureEditor').classList.remove('hidden');
-    updateTotal();
     q('#mixtureName').focus();
   };
   const renderLibrary=()=>{
-    q('#mixtureLibraryList').innerHTML=recipes.length?recipes.map(r=>`<article class="mixture-recipe"><div><strong>${esc(r.nombre)}</strong><small>Cemento ${r.cemento_tipo==='BLANCO'?'blanco':'gris'} · Arena fina ${esc(r.arena_fina_color)} · Arena gruesa ${esc(r.arena_gruesa_color)}${MIXTURE_GRAINS.filter(n=>Number(r[`grano_${n}_pct`])>0).map(n=>` · Grano ${n}: ${esc(r[`grano_${n}_color`])} / ${esc(r[`grano_${n}_tamano`])} (${fmt(r[`grano_${n}_pct`])}%)`).join('')}</small></div><button type="button" class="btn secondary" data-edit-mixture="${esc(r.id)}">Editar</button></article>`).join(''):'<p class="empty">Aún no hay mezclas. Crea la primera para asignarla a tus ítems.</p>';
+    q('#mixtureLibraryList').innerHTML=recipes.length?recipes.map(r=>`<article class="mixture-recipe"><div><strong>${esc(r.nombre)}</strong><small>Cemento ${r.cemento_tipo==='BLANCO'?'blanco':'gris'} · Arena fina ${esc(r.arena_fina_color)} · Arena gruesa ${esc(r.arena_gruesa_color)}${MIXTURE_GRAINS.filter(n=>Number(r[`grano_${n}_pct`])>0).map(n=>` · Grano ${n}: ${esc(r[`grano_${n}_color`])} / ${esc(r[`grano_${n}_tamano`])} (${fmt(r[`grano_${n}_pct`])}%)`).join('')}</small></div><button type="button" class="btn secondary" data-edit-mixture="${esc(r.id)}">Editar</button></article>`).join(''):'<p class="empty">Sin mezclas.</p>';
     q('#mixtureLibraryList').querySelectorAll('[data-edit-mixture]').forEach(button=>button.onclick=()=>openEditor(recipes.find(r=>r.id===button.dataset.editMixture)));
   };
   const renderDosage=async(host,item)=>{
@@ -115,8 +107,8 @@ async function mountProductionMixtures(drawer,order){
       const dosage=calculateProductionMixture(recipe,item.peso_kg);
       result.classList.remove('mixture-error');
       result.innerHTML=`<h4>Dosificación · ${esc(recipe.nombre)}</h4><p>${esc(item.codigo||'Ítem')} · Peso del elemento: <strong>${fmt(dosage.weight)} kg</strong></p>
-      <div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong><small>${esc(m.basis)}</small></span><strong>${fmt(m.amount)} ${m.unit}</strong></div>`).join('')}</div>
-      <p><strong>Total a preparar: ${fmt(dosage.totalKg)} kg + ${fmt(dosage.totalMl)} ml de aditivo</strong><small class="mixture-note">Receta base actual + granos adicionales. Las cantidades se recalculan con el peso actual del ítem y la mezcla guardada.</small></p>`;
+      <div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong></span><strong>${fmt(m.amount)} ${m.unit}</strong></div>`).join('')}</div>
+      <p><strong>Total a preparar: ${fmt(dosage.totalKg)} kg + ${fmt(dosage.totalMl)} ml de aditivo</strong></p>`;
     }catch(error){result.textContent=storageError(error);result.classList.add('mixture-error')}
     finally{button.disabled=false;select.disabled=false}
     result.classList.remove('hidden');
@@ -164,7 +156,6 @@ async function mountProductionMixtures(drawer,order){
   drawer._mixtures={renderItems};
   q('#newMixture').onclick=()=>openEditor(null);
   q('#cancelMixture').onclick=()=>q('#mixtureEditor').classList.add('hidden');
-  q('#mixtureEditor').addEventListener('input',updateTotal);
   q('#mixtureEditor').onsubmit=async event=>{
     event.preventDefault();
     const button=q('[type="submit"]');
@@ -178,7 +169,7 @@ async function mountProductionMixtures(drawer,order){
       if(!isCurrent())return;
       q('#mixtureEditor').classList.add('hidden');
       await reload();
-      setStatus('Mezcla guardada. Ya puedes asignarla a los ítems.');
+      setStatus('Mezcla guardada.');
     }catch(error){
       if(!isCurrent())return;
       q('#mixtureSaveStatus').textContent=storageError(error);q('#mixtureSaveStatus').classList.add('mixture-error');

@@ -11,7 +11,6 @@
 .item-mixture-result{padding:14px;background:#f7f7f5;border:1px solid var(--line);border-radius:12px;font-size:13px}
 .item-mixture-result h4{margin:0 0 10px}
 .mixture-dosage-rows>div{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
-.mixture-dosage-rows small,.mixture-note{display:block;margin-top:5px;color:var(--muted);font-size:11px}
 .mixture-dosage-rows>div>strong{white-space:nowrap;font-variant-numeric:tabular-nums}
 .mixture-error{color:#a32b23!important}
 @media(max-width:520px){.mixture-recipe{align-items:flex-start}.mixture-item-controls{align-items:stretch}.mixture-generate{width:100%}}
