@@ -301,8 +301,8 @@ async function mountProductionMixtures(drawer,order){
       itemCard.querySelector('.item-mixture')?.remove();
       const host=document.createElement('section');
       host.className='item-mixture';
-      host.innerHTML=`<div class="mixture-item-controls"><div class="field"><label>Mezcla del ítem<select aria-label="Mezcla para ${esc(item.codigo||'ítem')}" ${loading?'disabled':''}><option value="">Sin mezcla asignada</option>${recipes.map(r=>`<option value="${esc(r.id)}" ${item.mezcla_id===r.id?'selected':''}>${esc(r.nombre)}</option>`).join('')}</select></label></div><button type="button" class="btn secondary mixture-generate" ${loading?'disabled':''}>Generar dosificación</button></div><div class="item-mixture-summary"></div><p class="mixture-assignment-status" role="status"></p>`;
-      itemCard.append(host);
+      host.innerHTML=`<div class="mixture-item-controls"><div class="field"><label>Mezcla del ítem<select aria-label="Mezcla para ${esc(item.codigo||'ítem')}" ${loading?'disabled':''}><option value="">Sin mezcla asignada</option>${recipes.map(r=>`<option value="${esc(r.id)}" ${item.mezcla_id===r.id?'selected':''}>${esc(r.nombre)}</option>`).join('')}</select></label></div><button type="button" class="btn secondary mixture-generate" aria-label="Generar dosificación" title="Generar dosificación" ${loading?'disabled':''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-12h-7l1-8z"/></svg></button></div><div class="item-mixture-summary"></div><p class="mixture-assignment-status" role="status"></p>`;
+      (itemCard.querySelector('.item-work-row')||itemCard).append(host);
       const select=host.querySelector('select');
       const generate=host.querySelector('.mixture-generate');
       const status=host.querySelector('.mixture-assignment-status');
