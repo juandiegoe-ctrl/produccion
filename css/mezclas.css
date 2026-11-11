@@ -40,3 +40,19 @@
 #items .mixture-generate{width:auto;min-height:36px;padding:7px 9px;font-size:11px}
 .mixture-assignment-status:empty{display:none}
 @media(max-width:390px){.mixture-pigment-heading,.mixture-compact-pigment .grid{grid-template-columns:minmax(0,1fr) 96px 60px!important}.mixture-grain-heading,.mixture-compact-grain .grid{grid-template-columns:minmax(0,1fr) minmax(0,.8fr) 60px!important}}
+
+/* Dosage opens beside the order, outside the item card. */
+.dosage-side-panel{position:fixed;inset:0 auto 0 0;width:min(520px,100vw);height:100dvh;max-width:100vw;max-height:none;margin:0;padding:0;border:0;border-right:1px solid #d1d5db;background:#f3f4f6;color:var(--ink);box-shadow:10px 0 35px rgba(0,0,0,.12);overflow:hidden}
+.dosage-side-panel[open]{display:flex;flex-direction:column}
+.dosage-side-panel::backdrop{background:rgba(15,23,42,.12)}
+.dosage-panel-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:#fff;border-bottom:1px solid #e5e7eb;flex-shrink:0}
+.dosage-panel-header h3{margin:0;font-size:17px}
+.dosage-panel-close{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:var(--ink);font-size:18px}
+.dosage-panel-close:disabled{opacity:.5;cursor:wait}
+.dosage-panel-close:focus-visible{outline:2px solid #7e22ce;outline-offset:2px}
+.dosage-side-panel .item-mixture-result{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:18px;border:0;border-radius:0;background:transparent}
+.dosage-side-panel .item-dosage-form>.grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:10px!important}
+.dosage-side-panel .mixture-dosage-rows>div>span{min-width:0;overflow-wrap:anywhere}
+.dosage-side-panel .item-dosage-register{min-height:42px;width:100%}
+@media(max-width:520px){.dosage-panel-header{padding:12px 14px}.dosage-side-panel .item-mixture-result{padding:14px}}
+@media print{.dosage-side-panel{display:none!important}.dosage-side-panel::backdrop{display:none!important}}

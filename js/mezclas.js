@@ -167,20 +167,36 @@ async function mountProductionMixtures(drawer,order){
     q('#mixtureLibraryList').querySelectorAll('[data-edit-mixture]').forEach(button=>button.onclick=()=>openEditor(recipes.find(r=>r.id===button.dataset.editMixture)));
   };
   const renderDosage=async(host,item)=>{
-    const result=host.querySelector('.item-mixture-result');
+    drawer.querySelector('.dosage-side-panel')?.close();
     const button=host.querySelector('.mixture-generate');
     const select=host.querySelector('select');
+    const dialog=document.createElement('dialog');
+    const panelState={saving:false};
+    dialog.className='dosage-side-panel';
+    dialog.setAttribute('aria-labelledby','dosagePanelTitle');
+    dialog.innerHTML=`<header class="dosage-panel-header"><h3 id="dosagePanelTitle">Dosificación</h3><button type="button" class="dosage-panel-close" aria-label="Cerrar dosificación" title="Cerrar">✕</button></header><div class="item-mixture-result" aria-live="polite"></div>`;
+    const closeButton=dialog.querySelector('.dosage-panel-close');
+    const result=dialog.querySelector('.item-mixture-result');
+    closeButton.onclick=()=>{if(!panelState.saving)dialog.close()};
+    dialog.addEventListener('cancel',event=>{if(panelState.saving)event.preventDefault()});
+    dialog.addEventListener('close',()=>{
+      dialog.remove();
+      if(button.isConnected && button.checkVisibility())button.focus({preventScroll:true});
+    },{once:true});
+    drawer.append(dialog);
+    dialog.showModal();
     button.disabled=true;select.disabled=true;
     result.textContent='Calculando dosificación…';result.classList.remove('hidden','mixture-error');
     try{
       if(!item.mezcla_id)throw Error('Asigna y guarda una mezcla antes de generar la dosificación.');
       const {data:recipe,error}=await db.from('mezclas_produccion').select('*').eq('id',item.mezcla_id).single();
       if(error)throw error;
+      if(!dialog.open||!isCurrent())return;
       if(!recipe)throw Error('La mezcla asignada no está disponible. Vuelve a abrir la orden.');
       validateProductionMixture(recipe);
       const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Bogota'}).format(new Date());
       result.classList.remove('mixture-error');
-      result.innerHTML=`<h4>Dosificación · ${esc(recipe.nombre)}</h4><p>${esc(item.codigo||'Ítem')} · Peso del elemento: <strong>${fmt(Number(item.peso_kg)||0)} kg</strong></p>
+      result.innerHTML=`<h4>${esc(recipe.nombre)}</h4><p>${esc(item.codigo||'Ítem')} · Peso del elemento: <strong>${fmt(Number(item.peso_kg)||0)} kg</strong></p>
       <form class="item-dosage-form">
         <div class="grid">
           <div class="field"><label>Kg a fabricar<input class="item-dosage-kg" type="number" min="0.001" step="0.001" required value="${Number(item.peso_kg)>0?Number(item.peso_kg):''}"></label></div>
@@ -188,7 +204,7 @@ async function mountProductionMixtures(drawer,order){
         </div>
         <div class="item-dosage-preview"></div>
         <p class="item-dosage-status" role="status"></p>
-        <button type="submit" class="btn primary item-dosage-register">Registrar</button>
+        <button type="submit" class="btn primary item-dosage-register">Guardar</button>
       </form>`;
       const form=result.querySelector('form');
       const kgInput=form.querySelector('.item-dosage-kg');
@@ -203,7 +219,7 @@ async function mountProductionMixtures(drawer,order){
         if(saving)return;
         registered=false;registrationId=null;
         status.textContent='';status.classList.remove('mixture-error');
-        register.textContent='Registrar';
+        register.textContent='Guardar';
         try{
           const dosage=calculateProductionMixture(recipe,kgInput.value);
           preview.innerHTML=`<div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong></span><strong>${m.amount===null?'A ojo según color':fmt(m.amount)+' '+m.unit}</strong></div>`).join('')}</div>
@@ -219,15 +235,16 @@ async function mountProductionMixtures(drawer,order){
         try{
           registrationId ||= crypto.randomUUID();
           const payload=buildProductionDosageRecord(recipe,item,order.id,kgInput.value,dateInput.value,registrationId);
-          saving=true;register.disabled=true;kgInput.disabled=true;dateInput.disabled=true;select.disabled=true;button.disabled=true;
-          register.textContent='Registrando…';status.textContent='';status.classList.remove('mixture-error');
+          saving=true;panelState.saving=true;closeButton.disabled=true;register.disabled=true;kgInput.disabled=true;dateInput.disabled=true;select.disabled=true;button.disabled=true;
+          register.textContent='Guardando…';status.textContent='';status.classList.remove('mixture-error');
           let {data,error}=await db.from('registros_dosificacion').insert(payload).select('id').single();
           if(error?.code==='23505'){
             ({data,error}=await db.from('registros_dosificacion').select('id').eq('id',registrationId).eq('orden_id',order.id).single());
           }
           if(error)throw error;
           if(data?.id!==registrationId)throw Error('No se pudo confirmar el registro.');
-          registered=true;register.textContent='Registrado';status.textContent='Dosificación registrada.';
+          registered=true;register.textContent='Guardado';status.textContent='Dosificación registrada.';
+          dialog.close();
           try{
             if(isCurrent()){
               await drawer._reloadDosageRecords?.();
@@ -237,10 +254,12 @@ async function mountProductionMixtures(drawer,order){
               }
             }
           }catch(error){status.textContent='Registrado. No se pudo actualizar el listado.'}
-        }catch(error){status.textContent=error.message||'No se pudo registrar la dosificación.';status.classList.add('mixture-error');register.textContent='Registrar'}
-        finally{saving=false;register.disabled=registered;kgInput.disabled=false;dateInput.disabled=false;select.disabled=false;button.disabled=false}
+        }catch(error){status.textContent=error.message||'No se pudo registrar la dosificación.';status.classList.add('mixture-error');register.textContent='Guardar'}
+        finally{saving=false;panelState.saving=false;closeButton.disabled=false;register.disabled=registered;kgInput.disabled=false;dateInput.disabled=false;select.disabled=false;button.disabled=false}
       };
       recalculate();
+      kgInput.focus({preventScroll:true});
+      kgInput.select();
     }catch(error){result.textContent=storageError(error);result.classList.add('mixture-error')}
     finally{button.disabled=false;select.disabled=false}
     result.classList.remove('hidden');
@@ -254,7 +273,7 @@ async function mountProductionMixtures(drawer,order){
       itemCard.querySelector('.item-mixture')?.remove();
       const host=document.createElement('section');
       host.className='item-mixture';
-      host.innerHTML=`<div class="mixture-item-controls"><div class="field"><label>Mezcla del ítem<select aria-label="Mezcla para ${esc(item.codigo||'ítem')}" ${loading?'disabled':''}><option value="">Sin mezcla asignada</option>${recipes.map(r=>`<option value="${esc(r.id)}" ${item.mezcla_id===r.id?'selected':''}>${esc(r.nombre)}</option>`).join('')}</select></label></div><button type="button" class="btn secondary mixture-generate" ${loading?'disabled':''}>Generar dosificación</button></div><div class="item-mixture-summary"></div><p class="mixture-assignment-status" role="status"></p><div class="item-mixture-result hidden" aria-live="polite"></div>`;
+      host.innerHTML=`<div class="mixture-item-controls"><div class="field"><label>Mezcla del ítem<select aria-label="Mezcla para ${esc(item.codigo||'ítem')}" ${loading?'disabled':''}><option value="">Sin mezcla asignada</option>${recipes.map(r=>`<option value="${esc(r.id)}" ${item.mezcla_id===r.id?'selected':''}>${esc(r.nombre)}</option>`).join('')}</select></label></div><button type="button" class="btn secondary mixture-generate" ${loading?'disabled':''}>Generar dosificación</button></div><div class="item-mixture-summary"></div><p class="mixture-assignment-status" role="status"></p>`;
       itemCard.append(host);
       const select=host.querySelector('select');
       const generate=host.querySelector('.mixture-generate');
@@ -265,7 +284,6 @@ async function mountProductionMixtures(drawer,order){
         const previous=item.mezcla_id||'';
         const next=select.value||null;
         select.disabled=true;generate.disabled=true;
-        host.querySelector('.item-mixture-result').classList.add('hidden');
         status.textContent='Guardando mezcla…';status.classList.remove('mixture-error');
         try{
           const {data,error}=await db.from('items_produccion').update({mezcla_id:next}).eq('id',item.id).select('id,mezcla_id').single();

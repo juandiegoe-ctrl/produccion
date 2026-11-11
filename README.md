@@ -73,7 +73,7 @@ La ampliación está en `db/mezclas-pigmentos.sql`, aplicada como
 ## Registro de dosificaciones por ítem
 
 Al generar una dosificación, **Kg a fabricar** se puede cambiar sin modificar el
-peso del ítem. Las cantidades se recalculan con ese valor. **Registrar** guarda
+peso del ítem. Las cantidades se recalculan con ese valor. **Guardar** guarda
 fecha, kg, ítem, mezcla y una copia de la receta y cantidades usadas en **Registros de mezclas**, dentro de la pestaña **Mezclas**. Los registros conservan los pigmentos
 «a ojo» y no cambian al editar una receta. El identificador del registro evita
 crear duplicados al reintentar un guardado cuya respuesta se interrumpió.
@@ -82,3 +82,6 @@ Los registros históricos siguen disponibles; los registros creados desde ítems
 se consultan como una copia fija de la dosificación utilizada. La ampliación
 `db/dosificacion-items.sql` se aplicó como
 `save_item_dosage_batches_with_recipe_snapshots`.
+
+La dosificación se abre en un panel a la izquierda. **Guardar** registra la mezcla
+y cierra el panel; **X** o Escape lo cierran sin guardar.
