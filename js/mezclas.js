@@ -221,7 +221,10 @@ async function mountProductionMixtures(drawer,order){
           try{
             if(isCurrent()){
               await drawer._reloadDosageRecords?.();
-              if(isCurrent())drawer.querySelector('[data-tab="castingRecords"]')?.click();
+              if(isCurrent()){
+                drawer.querySelector('[data-tab="dosageRecords"]')?.click();
+                drawer.querySelector('#castingRecords')?.scrollIntoView({behavior:'smooth',block:'start'});
+              }
             }
           }catch(error){status.textContent='Registrado. No se pudo actualizar el listado.'}
         }catch(error){status.textContent=error.message||'No se pudo registrar la dosificación.';status.classList.add('mixture-error');register.textContent='Registrar'}

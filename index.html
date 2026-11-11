@@ -2985,7 +2985,6 @@ hr{display:none!important}
 .order-drawer .tabs .tab[data-tab="details"]{--tab-color:#1d4ed8;--tab-tint:#eff6ff;--tab-border:#bfdbfe}
 .order-drawer .tabs .tab[data-tab="items"]{--tab-color:#047857;--tab-tint:#ecfdf5;--tab-border:#a7f3d0}
 .order-drawer .tabs .tab[data-tab="dosageRecords"]{--tab-color:#7e22ce;--tab-tint:#faf5ff;--tab-border:#e9d5ff}
-.order-drawer .tabs .tab[data-tab="castingRecords"]{--tab-color:#b45309;--tab-tint:#fffbeb;--tab-border:#fde68a}
 .order-drawer .tabs .tab{background:var(--tab-tint);color:var(--tab-color);border-color:var(--tab-border)}
 .order-drawer .tabs .tab.active{background:var(--tab-color);color:#fff;border-color:var(--tab-color)}
 .order-drawer .tabs .tab:hover{filter:brightness(.96)}
@@ -3499,7 +3498,6 @@ async function openOrder(id){
       <button class="tab active" data-tab="details" aria-pressed="true">Orden</button>
       <button class="tab" data-tab="items" aria-pressed="false">Ítems</button>
       <button class="tab" data-tab="dosageRecords" aria-pressed="false">Mezclas</button>
-      <button class="tab" data-tab="castingRecords" aria-pressed="false">Registros</button>
     </nav>
 
     <section id="details" class="panel">
@@ -3632,12 +3630,10 @@ async function openOrder(id){
 
     <section id="dosageRecords" class="panel hidden">
       <div id="mixtureLibrary" class="card"></div>
-    </section>
-
-    <section id="castingRecords" class="panel hidden">
+      <section id="castingRecords" style="margin-top:16px">
       <div class="card">
         <div class="section-head">
-          <div><h3>Historial de fundidas</h3></div>
+          <div><h3>Registros de mezclas</h3></div>
           <button id="newDosageForOrder" class="btn primary">+ Nueva fundida</button>
         </div>
 
@@ -3728,6 +3724,7 @@ async function openOrder(id){
           <button id="saveOrderDosage" type="button" class="btn primary">REGISTRAR FUNDIDA</button>
         </div>
       </div>
+      </section>
     </section>
 
     <section id="document" class="panel hidden">
@@ -3798,7 +3795,7 @@ async function openOrder(id){
       drawer.querySelectorAll('.panel').forEach(panel=>
         panel.classList.toggle('hidden',panel.id!==button.dataset.tab)
       );
-      if(button.dataset.tab==='castingRecords')drawer._reloadDosageRecords?.().catch(displayError);
+      if(button.dataset.tab==='dosageRecords')drawer._reloadDosageRecords?.().catch(displayError);
     };
   });
 

@@ -74,8 +74,7 @@ La ampliación está en `db/mezclas-pigmentos.sql`, aplicada como
 
 Al generar una dosificación, **Kg a fabricar** se puede cambiar sin modificar el
 peso del ítem. Las cantidades se recalculan con ese valor. **Registrar** guarda
-fecha, kg, ítem, mezcla y una copia de la receta y cantidades usadas en la pestaña
-**Registros**, a continuación de Mezclas. Los registros conservan los pigmentos
+fecha, kg, ítem, mezcla y una copia de la receta y cantidades usadas en **Registros de mezclas**, dentro de la pestaña **Mezclas**. Los registros conservan los pigmentos
 «a ojo» y no cambian al editar una receta. El identificador del registro evita
 crear duplicados al reintentar un guardado cuya respuesta se interrumpió.
 
