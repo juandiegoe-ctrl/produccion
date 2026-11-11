@@ -80,3 +80,10 @@ test('batch registration rejects invalid dates and unsupported kg precision',()=
  assert.throws(()=>build(50.1234,'2026-11-11'),/3 decimales/);
  assert.equal(build(50.123,'2026-11-11').total_kg,50.123);
 });
+
+test('batch comments are saved and empty comments stay optional',()=>{
+ const build=comments=>context.buildProductionDosageRecord(recipe,{id:'item-1'},'order-1',50,'2026-11-11','batch-1',comments);
+ assert.equal(build('  Fabricar extra para reposición.  ').observacion,'Fabricar extra para reposición.');
+ assert.equal(build('   ').observacion,null);
+ assert.equal(build(undefined).observacion,null);
+});

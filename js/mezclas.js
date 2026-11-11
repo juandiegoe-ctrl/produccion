@@ -45,7 +45,7 @@ function calculateProductionMixture(recipe,weight){
   return {weight:kg,components,hasUnmeasuredPigments:components.some(m=>m.amount===null),totalKg:components.filter(m=>m.unit==='kg'&&m.amount!==null).reduce((sum,m)=>sum+m.amount,0),totalMl:components.filter(m=>m.unit==='ml').reduce((sum,m)=>sum+m.amount,0)};
 }
 
-function buildProductionDosageRecord(recipe,item,orderId,weight,date,id){
+function buildProductionDosageRecord(recipe,item,orderId,weight,date,id,comments=''){
   const dosage=calculateProductionMixture(recipe,weight);
   if(Math.abs(dosage.weight*1000-Math.round(dosage.weight*1000))>0.00001)throw Error('Usa hasta 3 decimales en los kg a fabricar.');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date+'T12:00:00Z')) || new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date)throw Error('Selecciona una fecha válida.');
@@ -54,6 +54,7 @@ function buildProductionDosageRecord(recipe,item,orderId,weight,date,id){
     item_codigo:item.codigo||'',mezcla_nombre:recipe.nombre,
     receta_snapshot:JSON.parse(JSON.stringify(recipe)),
     fecha_fundida:date,total_kg:dosage.weight,
+    observacion:comments.trim()||null,
     pigmento_nombre:recipe.pigmento_1_nombre||null,
     pigmento_porcentaje:Number(recipe.pigmento_1_pct??0),
     componentes:Object.fromEntries(dosage.components.map(component=>[
@@ -232,12 +233,14 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
           <div class="field"><label>Fecha<input class="item-dosage-date" type="date" required value="${today}"></label></div>
         </div>
         <div class="item-dosage-preview"></div>
+        <div class="field"><label>Comentarios<textarea class="item-dosage-comments" rows="3"></textarea></label></div>
         <p class="item-dosage-status" role="status"></p>
         <button type="submit" class="btn primary item-dosage-register">Guardar</button>
       </form>`;
       const form=result.querySelector('form');
       const kgInput=form.querySelector('.item-dosage-kg');
       const dateInput=form.querySelector('.item-dosage-date');
+      const commentsInput=form.querySelector('.item-dosage-comments');
       const preview=form.querySelector('.item-dosage-preview');
       const register=form.querySelector('.item-dosage-register');
       const status=form.querySelector('.item-dosage-status');
@@ -257,13 +260,14 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
       };
       kgInput.addEventListener('input',recalculate);
       dateInput.addEventListener('input',recalculate);
+      commentsInput.addEventListener('input',recalculate);
       form.onsubmit=async event=>{
         event.preventDefault();
         if(saving||registered)return;
         try{
           registrationId ||= crypto.randomUUID();
-          const payload=buildProductionDosageRecord(recipe,item,order.id,kgInput.value,dateInput.value,registrationId);
-          saving=true;side.setBusy(true);register.disabled=true;kgInput.disabled=true;dateInput.disabled=true;select.disabled=true;button.disabled=true;
+          const payload=buildProductionDosageRecord(recipe,item,order.id,kgInput.value,dateInput.value,registrationId,commentsInput.value);
+          saving=true;side.setBusy(true);register.disabled=true;kgInput.disabled=true;dateInput.disabled=true;commentsInput.disabled=true;select.disabled=true;button.disabled=true;
           register.textContent='Guardando…';status.textContent='';status.classList.remove('mixture-error');
           let {data,error}=await db.from('registros_dosificacion').insert(payload).select('id').single();
           if(error?.code==='23505'){
@@ -283,7 +287,7 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
             }
           }catch(error){status.textContent='Registrado. No se pudo actualizar el listado.'}
         }catch(error){status.textContent=error.message||'No se pudo registrar la dosificación.';status.classList.add('mixture-error');register.textContent='Guardar'}
-        finally{saving=false;side.setBusy(false);register.disabled=registered;kgInput.disabled=false;dateInput.disabled=false;select.disabled=false;button.disabled=false}
+        finally{saving=false;side.setBusy(false);register.disabled=registered;kgInput.disabled=false;dateInput.disabled=false;commentsInput.disabled=false;select.disabled=false;button.disabled=false}
       };
       recalculate();
       kgInput.focus({preventScroll:true});
