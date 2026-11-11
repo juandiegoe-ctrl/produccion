@@ -197,10 +197,10 @@ async function mountProductionMixtures(drawer,order){
     openMixtureSidePanel(drawer,{title:recipe?'Editar mezcla':'Crear mezcla',content:editor});
     q('#mixtureName').focus({preventScroll:true});
   };
-  const recipeTags=recipe=>{
+  const recipeTags=(recipe,includePigments=true)=>{
     if(!recipe)return '';
     const grains=MIXTURE_GRAINS.filter(n=>Number(recipe[`grano_${n}_pct`])>0).map(n=>`<span class="mixture-tag" title="Grano ${n}">${esc(recipe[`grano_${n}_color`])} ${esc(recipe[`grano_${n}_tamano`])} <b>${fmt(recipe[`grano_${n}_pct`])}%</b></span>`).join('');
-    const pigments=MIXTURE_PIGMENTS.filter(n=>recipe[`pigmento_${n}_nombre`]?.trim()).map(n=>`<span class="mixture-tag mixture-tag-pigment" title="Pigmento ${n}">${esc(recipe[`pigmento_${n}_nombre`])} <b>${recipe[`pigmento_${n}_pct`]==null?'A ojo':fmt(recipe[`pigmento_${n}_pct`])+'%'}</b></span>`).join('');
+    const pigments=includePigments?MIXTURE_PIGMENTS.filter(n=>recipe[`pigmento_${n}_nombre`]?.trim()).map(n=>`<span class="mixture-tag mixture-tag-pigment" title="Pigmento ${n}">${esc(recipe[`pigmento_${n}_nombre`])} <b>${recipe[`pigmento_${n}_pct`]==null?'A ojo':fmt(recipe[`pigmento_${n}_pct`])+'%'}</b></span>`).join(''):'';
     return grains||pigments?`<div class="mixture-tags">${grains}${pigments}</div>`:'';
   };
   const renderLibrary=()=>{
@@ -301,18 +301,18 @@ async function mountProductionMixtures(drawer,order){
       itemCard.querySelector('.item-mixture')?.remove();
       const host=document.createElement('section');
       host.className='item-mixture';
-      host.innerHTML=`<div class="mixture-item-controls"><div class="field"><label>Mezcla del ítem<select aria-label="Mezcla para ${esc(item.codigo||'ítem')}" ${loading?'disabled':''}><option value="">Sin mezcla asignada</option>${recipes.map(r=>`<option value="${esc(r.id)}" ${item.mezcla_id===r.id?'selected':''}>${esc(r.nombre)}</option>`).join('')}</select></label></div><button type="button" class="btn secondary mixture-generate" aria-label="Generar dosificación" title="Generar dosificación" ${loading?'disabled':''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-12h-7l1-8z"/></svg></button></div><div class="item-mixture-summary"></div><p class="mixture-assignment-status" role="status"></p>`;
+      host.innerHTML=`<div class="mixture-item-controls"><div class="field"><label>Mezcla<select aria-label="Mezcla para ${esc(item.codigo||'ítem')}" ${loading?'disabled':''}><option value="">Sin mezcla asignada</option>${recipes.map(r=>`<option value="${esc(r.id)}" ${item.mezcla_id===r.id?'selected':''}>${esc(r.nombre)}</option>`).join('')}</select></label></div><button type="button" class="btn secondary mixture-generate" aria-label="Generar dosificación" title="Generar dosificación" ${loading?'disabled':''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-12h-7l1-8z"/></svg></button></div><div class="item-mixture-summary"></div><p class="mixture-assignment-status" role="status"></p>`;
       (itemCard.querySelector('.item-work-row')||itemCard).append(host);
       const select=host.querySelector('select');
       const generate=host.querySelector('.mixture-generate');
       const status=host.querySelector('.mixture-assignment-status');
-      const renderSummary=()=>{host.querySelector('.item-mixture-summary').innerHTML=recipeTags(recipes.find(r=>r.id===item.mezcla_id))};
+      const renderSummary=()=>{host.querySelector('.item-mixture-summary').innerHTML=recipeTags(recipes.find(r=>r.id===item.mezcla_id),false)};
       renderSummary();
       select.onchange=async()=>{
         const previous=item.mezcla_id||'';
         const next=select.value||null;
         select.disabled=true;generate.disabled=true;
-        status.textContent='Guardando mezcla…';status.classList.remove('mixture-error');
+        status.textContent='Guardando mezcla…';status.classList.remove('mixture-error');status.classList.add('mixture-visually-hidden');
         try{
           const {data,error}=await db.from('items_produccion').update({mezcla_id:next}).eq('id',item.id).select('id,mezcla_id').single();
           if(error)throw error;
@@ -320,7 +320,7 @@ async function mountProductionMixtures(drawer,order){
           item.mezcla_id=data.mezcla_id;
           renderSummary();
           status.textContent='Mezcla guardada.';
-        }catch(error){select.value=previous;status.textContent=storageError(error);status.classList.add('mixture-error')}
+        }catch(error){select.value=previous;status.textContent=storageError(error);status.classList.add('mixture-error');status.classList.remove('mixture-visually-hidden')}
         finally{select.disabled=false;generate.disabled=false}
       };
       generate.onclick=()=>renderDosage(host,item);
