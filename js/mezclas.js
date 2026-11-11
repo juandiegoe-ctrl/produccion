@@ -107,7 +107,7 @@ function openMixtureSidePanel(drawer,{title,content=null,trigger=document.active
   return panel;
 }
 
-async function mountProductionMixtures(drawer,order){
+async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
   const panel=drawer.querySelector('#mixtureLibrary');
   if(!panel)return;
   const card=drawer.querySelector('.drawer-card');
@@ -116,6 +116,7 @@ async function mountProductionMixtures(drawer,order){
   let recipes=[];
   let editingId=null;
   let loading=false;
+  let recipeRequest=0;
   const storageError=error=>error?.code==='23505'?'Ya existe una mezcla con ese nombre. Usa otro nombre.':(error?.message||'No se pudo guardar el cambio.');
   panel.innerHTML=`
     <div class="section-head"><div><h3>Mezclas</h3></div><button type="button" class="btn primary" id="newMixture">+ Crear mezcla</button></div>
@@ -319,6 +320,7 @@ async function mountProductionMixtures(drawer,order){
           if(!data || data.mezcla_id!==next)throw Error('No se pudo confirmar la asignación de la mezcla.');
           item.mezcla_id=data.mezcla_id;
           renderSummary();
+          onChange({recipes});
           status.textContent='Mezcla guardada.';
         }catch(error){select.value=previous;status.textContent=storageError(error);status.classList.add('mixture-error');status.classList.remove('mixture-visually-hidden')}
         finally{select.disabled=false;generate.disabled=false}
@@ -327,14 +329,16 @@ async function mountProductionMixtures(drawer,order){
     });
   };
   const reload=async()=>{
-    loading=true;
+    const request=++recipeRequest;
+    loading=true;onChange({loading:true});
     const {data,error}=await db.from('mezclas_produccion').select('*').order('nombre');
+    if(!isCurrent() || request!==recipeRequest)return;
     loading=false;
-    if(error)throw error;
-    if(!isCurrent())return;
+    if(error){onChange({error});throw error}
     recipes=data||[];renderLibrary();renderItems();setStatus('');
+    onChange({recipes});
   };
-  drawer._mixtures={renderItems};
+  drawer._mixtures={renderItems,reload};
   q('#newMixture').onclick=()=>openEditor(null);
   q('#cancelMixture').onclick=()=>drawer._mixturePanel?.close();
   q('#mixtureEditor').onsubmit=async event=>{

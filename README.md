@@ -89,3 +89,10 @@ y cierra el panel; **X** o Escape lo cierran sin guardar.
 Crear y editar recetas, consultar dosificaciones guardadas y crear o editar
 registros manuales usan el mismo panel izquierdo. Al cerrarlo, los formularios
 vuelven a su ubicación oculta sin ampliar los listados.
+
+El documento de la OP muestra la mezcla asignada a cada ítem y un cuadro
+**Mezclas** antes de Observaciones. El cuadro incluye una sola vez cada receta
+utilizada en esa orden, con cemento, arenas, granos (color, tamaño y porcentaje)
+y pigmentos (porcentaje sobre cemento o «a ojo»). Se actualiza al asignar o editar
+una mezcla y al abrir el documento; la impresión espera a que estén disponibles
+las recetas asignadas.

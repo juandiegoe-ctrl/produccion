@@ -114,3 +114,18 @@
 #items .reference-upload.uploading svg{visibility:hidden}
 #items .reference-upload.uploading::after{content:'…';position:absolute;font-size:17px}
 @media(max-width:700px){#items .item-card-v58 .item-work-row{grid-template-columns:104px minmax(0,1fr);gap:8px 10px}}
+
+/* General recipe parameters in the printed order. */
+.print-mixtures{margin-top:18px}
+.print-mixtures h3{margin:0 0 8px;font-size:13px;break-after:avoid}
+.print-mixtures-table{width:100%;min-width:0;border-collapse:collapse;table-layout:fixed}
+.print-mixtures-table th,.print-mixtures-table td{position:static;padding:7px;border:1px solid #aaa;font-size:10px;text-align:left;vertical-align:top;overflow-wrap:anywhere;line-height:1.4}
+.print-mixtures-table th:first-child{width:24%}
+.print-mixtures-table tbody th{background:#fff;color:#000;text-transform:none}
+#printOrderDocument:disabled{opacity:.5;cursor:wait}
+#documentMixturesStatus:empty{display:none}
+@media print{
+  .print-mixtures-table thead{display:table-header-group}
+  .print-mixtures-table tr{break-inside:avoid;page-break-inside:avoid}
+  .print-mixtures-table th,.print-mixtures-table td{font-size:9px;padding:5px}
+}

@@ -196,15 +196,19 @@ th{position:sticky;top:0;background:#ecece7;color:#62645e;text-transform:upperca
   }
 
   .production-table th:nth-child(1),
-  .production-table td:nth-child(1){width:11%}
+  .production-table td:nth-child(1){width:9%}
   .production-table th:nth-child(2),
-  .production-table td:nth-child(2){width:27%}
+  .production-table td:nth-child(2){width:18%}
   .production-table th:nth-child(3),
-  .production-table td:nth-child(3){width:16%}
+  .production-table td:nth-child(3){width:18%}
   .production-table th:nth-child(4),
-  .production-table td:nth-child(4){width:19%}
+  .production-table td:nth-child(4){width:10%}
   .production-table th:nth-child(5),
-  .production-table td:nth-child(5){width:27%}
+  .production-table td:nth-child(5){width:14%}
+  .production-table th:nth-child(6),
+  .production-table td:nth-child(6){width:11%}
+  .production-table th:nth-child(7),
+  .production-table td:nth-child(7){width:20%}
 
   .qr-block img{
     width:76px!important;
@@ -276,12 +280,13 @@ th{position:sticky;top:0;background:#ecece7;color:#62645e;text-transform:upperca
 
 .print-items-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
 .print-items-heading strong{font-size:11px}
-.production-table th:nth-child(1){width:10%}
-.production-table th:nth-child(2){width:22%}
-.production-table th:nth-child(3){width:12%}
-.production-table th:nth-child(4){width:17%}
+.production-table th:nth-child(1){width:9%}
+.production-table th:nth-child(2){width:18%}
+.production-table th:nth-child(3){width:18%}
+.production-table th:nth-child(4){width:10%}
 .production-table th:nth-child(5){width:14%}
-.production-table th:nth-child(6){width:25%}
+.production-table th:nth-child(6){width:11%}
+.production-table th:nth-child(7){width:20%}
 @media print{
   .print-items-heading{display:flex!important}
   .production-table{table-layout:fixed;width:100%}
@@ -3749,12 +3754,17 @@ async function openOrder(id){
         </div>
 
         <div id="documentItems"></div>
+        <section class="print-mixtures">
+          <h3>MEZCLAS</h3>
+          <div id="documentMixtures"></div>
+        </section>
         <section class="print-notes">
           <h3>OBSERVACIONES DE PRODUCCIÓN</h3>
           <div class="notes-box"></div>
         </section>
         <div class="no-print" style="margin-top:16px">
-          <button class="btn primary" onclick="window.print()">Imprimir / Guardar PDF</button>
+          <button id="printOrderDocument" class="btn primary" onclick="window.print()">Imprimir / Guardar PDF</button>
+          <p id="documentMixturesStatus" role="status"></p>
         </div>
       </div>
     </section>
@@ -3799,6 +3809,7 @@ async function openOrder(id){
         panel.classList.toggle('hidden',panel.id!==button.dataset.tab)
       );
       if(button.dataset.tab==='dosageRecords')drawer._reloadDosageRecords?.().catch(displayError);
+      if(button.dataset.tab==='document')drawer._mixtures?.reload().catch(displayError);
     };
   });
 
@@ -4238,15 +4249,26 @@ async function openOrder(id){
   drawer._reloadDosageRecords=loadOrderDosageRecords;
   loadOrderDosageRecords();
 
+  let documentRecipes=[];
+  let documentRecipesLoading=true;
+  let documentRecipesError=null;
   const renderDocument=()=>{
+    const mixtureById=new Map(documentRecipes.map(recipe=>[recipe.id,recipe]));
+    const usedMixtureIds=[...new Set(order.items.map(item=>item.mezcla_id).filter(Boolean))];
+    const missing=usedMixtureIds.some(id=>!mixtureById.has(id));
+    const printButton=drawer.querySelector('#printOrderDocument');
+    const printStatus=drawer.querySelector('#documentMixturesStatus');
+    printButton.disabled=usedMixtureIds.length>0 && (documentRecipesLoading||!!documentRecipesError||missing);
+    printStatus.textContent=usedMixtureIds.length===0?'':documentRecipesLoading?'Cargando mezclas…':documentRecipesError||missing?'No se pudieron cargar las mezclas. Vuelve a abrir Documento.':'';
     const rows=order.items.length?order.items.map(item=>`<tr>
       <td>${esc(item.codigo)}</td>
       <td>${esc(item.catalogo_productos?.nombre||item.descripcion||'—')}</td>
+      <td>${esc(item.mezcla_id?mixtureById.get(item.mezcla_id)?.nombre||(documentRecipesLoading?'Cargando…':'Mezcla no disponible'):'Sin mezcla')}</td>
       <td>${Number(item.peso_kg||0).toLocaleString('es-CO',{maximumFractionDigits:2})} kg</td>
       <td>${esc(item.dimensiones||'—')}</td>
       <td>${esc(item.colores||'—')}</td>
       <td>${esc(item.comentarios||'—')}</td>
-    </tr>`).join(''):`<tr><td colspan="6">Sin ítems registrados.</td></tr>`;
+    </tr>`).join(''):`<tr><td colspan="7">Sin ítems registrados.</td></tr>`;
 
     drawer.querySelector('#documentItems').innerHTML=`
       ${(()=>{
@@ -4269,11 +4291,29 @@ async function openOrder(id){
         </div>`;})()}
       <table class="production-table">
         <thead><tr>
-          <th>Código</th><th>Producto</th><th>Peso estimado</th>
+          <th>Código</th><th>Producto</th><th>Mezcla</th><th>Peso estimado</th>
           <th>Dimensiones</th><th>Colores</th><th>Comentarios</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
+
+    const recipeParameters=recipe=>{
+      const parts=[`Cemento ${recipe.cemento_tipo==='BLANCO'?'blanco':'gris'}`,`Arena fina ${recipe.arena_fina_color}`,`Arena gruesa ${recipe.arena_gruesa_color}`];
+      MIXTURE_GRAINS.forEach(n=>{
+        if(Number(recipe[`grano_${n}_pct`])>0)parts.push(`Grano ${recipe[`grano_${n}_color`]} ${recipe[`grano_${n}_tamano`]} ${Number(recipe[`grano_${n}_pct`]).toLocaleString('es-CO')}%`);
+      });
+      MIXTURE_PIGMENTS.forEach(n=>{
+        if(recipe[`pigmento_${n}_nombre`]?.trim())parts.push(`Pigmento ${recipe[`pigmento_${n}_nombre`]} · ${recipe[`pigmento_${n}_pct`]==null?'A ojo según color':Number(recipe[`pigmento_${n}_pct`]).toLocaleString('es-CO')+'% sobre el cemento'}`);
+      });
+      return parts.map(esc).join(' · ');
+    };
+    drawer.querySelector('#documentMixtures').innerHTML=`<table class="print-mixtures-table">
+      <thead><tr><th>Mezcla</th><th>Parámetros</th></tr></thead>
+      <tbody>${usedMixtureIds.length?usedMixtureIds.map(id=>{
+        const recipe=mixtureById.get(id);
+        return recipe?`<tr><th scope="row">${esc(recipe.nombre)}</th><td>${recipeParameters(recipe)}</td></tr>`:`<tr><th scope="row">${documentRecipesLoading?'Cargando…':'Mezcla no disponible'}</th><td>—</td></tr>`;
+      }).join(''):'<tr><td colspan="2">Sin mezclas asignadas.</td></tr>'}</tbody>
+    </table>`;
 
     const targetUrl=`${location.origin}${location.pathname}?orden=${encodeURIComponent(order.qr_token)}`;
     drawer.querySelector('#orderQr').src=
@@ -4907,7 +4947,12 @@ async function openOrder(id){
 
   renderItems();
   renderDocument();
-  await mountProductionMixtures(drawer,order);
+  await mountProductionMixtures(drawer,order,{onChange:state=>{
+    documentRecipesLoading=!!state.loading;
+    documentRecipesError=state.error||null;
+    if(state.recipes)documentRecipes=state.recipes;
+    renderDocument();
+  }});
 }
 
 
