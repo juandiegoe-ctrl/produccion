@@ -251,8 +251,7 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
         register.textContent='Guardar';
         try{
           const dosage=calculateProductionMixture(recipe,kgInput.value);
-          preview.innerHTML=`<div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong></span><strong>${m.amount===null?'A ojo según color':fmt(m.amount)+' '+m.unit}</strong></div>`).join('')}</div>
-          <p><strong>${dosage.hasUnmeasuredPigments?'Subtotal calculado':'Total a preparar'}: ${fmt(dosage.totalKg)} kg + ${fmt(dosage.totalMl)} ml de aditivo</strong></p>`;
+          preview.innerHTML=`<div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong></span><strong>${m.amount===null?'A ojo según color':fmt(m.amount)+' '+m.unit}</strong></div>`).join('')}</div>`;
           register.disabled=false;
         }catch(error){preview.innerHTML='';status.textContent=error.message;status.classList.add('mixture-error');register.disabled=true}
       };
