@@ -424,7 +424,7 @@ background:#fafafa}
 }
 
 
-#dosageRecords .costs-summary{margin:14px 0}
+#castingRecords .costs-summary{margin:14px 0}
 #orderDosageForm{border:1px solid var(--line)}
 #orderDosageForm h4{margin:16px 0 8px}
 #orderDosagePreview{margin-top:12px}
@@ -787,7 +787,7 @@ background:#fafafa}
 
   /* Cost views keep tables usable via horizontal swipe */
   #costs .list-wrap,
-  #dosageRecords .list-wrap{
+  #castingRecords .list-wrap{
     overflow-x:auto;
     margin-left:-2px;
     margin-right:-2px;
@@ -3414,6 +3414,7 @@ async function loadOrders({openRequested=true}={}){
 async function openNew(){
   const drawer=$('#drawer');
   drawer._mixtures=null;
+  drawer._reloadDosageRecords=null;
   drawer.innerHTML=`<div class="drawer-card">
     <div class="drawer-head">
       <div><h2>Nueva orden</h2><p>Información general de la OP.</p></div>
@@ -3468,6 +3469,7 @@ async function openOrder(id){
 
   const drawer=$('#drawer');
   drawer._mixtures=null;
+  drawer._reloadDosageRecords=null;
   drawer.innerHTML=`<div class="drawer-card order-drawer">
     <div class="drawer-head">
       <div class="drawer-title">
@@ -3487,6 +3489,7 @@ async function openOrder(id){
       <button class="tab active" data-tab="details" aria-pressed="true">Orden</button>
       <button class="tab" data-tab="items" aria-pressed="false">Ítems</button>
       <button class="tab" data-tab="dosageRecords" aria-pressed="false">Mezclas</button>
+      <button class="tab" data-tab="castingRecords" aria-pressed="false">Registros</button>
     </nav>
 
     <section id="details" class="panel">
@@ -3618,7 +3621,10 @@ async function openOrder(id){
 
 
     <section id="dosageRecords" class="panel hidden">
-      <div id="mixtureLibrary" class="card" style="margin-bottom:16px"></div>
+      <div id="mixtureLibrary" class="card"></div>
+    </section>
+
+    <section id="castingRecords" class="panel hidden">
       <div class="card">
         <div class="section-head">
           <div><h3>Historial de fundidas</h3></div>
@@ -3782,6 +3788,7 @@ async function openOrder(id){
       drawer.querySelectorAll('.panel').forEach(panel=>
         panel.classList.toggle('hidden',panel.id!==button.dataset.tab)
       );
+      if(button.dataset.tab==='castingRecords')drawer._reloadDosageRecords?.().catch(displayError);
     };
   });
 
@@ -3893,7 +3900,9 @@ async function openOrder(id){
     `).join('');
   };
 
+  let dosageRecordsRequest=0;
   const loadOrderDosageRecords=async()=>{
+    const request=++dosageRecordsRequest;
     const summary=drawer.querySelector('#orderDosageSummary');
     const list=drawer.querySelector('#orderDosageList');
 
@@ -3903,6 +3912,8 @@ async function openOrder(id){
       .eq('orden_id',order.id)
       .order('fecha_fundida',{ascending:false})
       .order('created_at',{ascending:false});
+
+    if(request!==dosageRecordsRequest || drawer.querySelector('#orderDosageList')!==list)return;
 
     if(error){
       summary.innerHTML='';
@@ -3917,15 +3928,16 @@ async function openOrder(id){
 
     summary.innerHTML=`
       <div><small>Fundidas</small><strong>${rows.length}</strong></div>
-      <div><small>Peso fabricado</small><strong>${totalFabricated.toLocaleString('es-CO',{maximumFractionDigits:2})} kg</strong></div>
-      <div><small>Peso estimado OP</small><strong>${estimatedWeight.toLocaleString('es-CO',{maximumFractionDigits:2})} kg</strong></div>
-      <div><small>Diferencia</small><strong>${difference.toLocaleString('es-CO',{maximumFractionDigits:2})} kg</strong></div>`;
+      <div><small>Peso fabricado</small><strong>${totalFabricated.toLocaleString('es-CO',{maximumFractionDigits:3})} kg</strong></div>
+      <div><small>Peso estimado OP</small><strong>${estimatedWeight.toLocaleString('es-CO',{maximumFractionDigits:3})} kg</strong></div>
+      <div><small>Diferencia</small><strong>${difference.toLocaleString('es-CO',{maximumFractionDigits:3})} kg</strong></div>`;
 
     list.innerHTML=rows.length?`<div class="list-wrap"><table>
       <thead><tr>
         <th>Fecha</th>
         <th>Kg</th>
-        <th>Pigmento</th>
+        <th>Ítem / Mezcla</th>
+        <th>Pigmentos</th>
         <th>Grano 1</th>
         <th>Grano 2</th>
         <th>Grano 3</th>
@@ -3934,8 +3946,9 @@ async function openOrder(id){
       </tr></thead>
       <tbody>${rows.map(row=>`<tr>
         <td>${row.fecha_fundida?new Date(row.fecha_fundida+'T12:00:00').toLocaleDateString('es-CO'):'—'}</td>
-        <td><strong>${Number(row.total_kg||0).toLocaleString('es-CO',{maximumFractionDigits:2})} kg</strong></td>
-        <td>${esc(row.pigmento_nombre||'Pigmento')} · ${Number(row.pigmento_porcentaje||0)}%</td>
+        <td><strong>${Number(row.total_kg||0).toLocaleString('es-CO',{maximumFractionDigits:3})} kg</strong></td>
+        <td>${esc(row.item_codigo||'—')}<br>${esc(row.mezcla_nombre||'—')}</td>
+        <td>${row.receta_snapshot?MIXTURE_PIGMENTS.filter(n=>row.receta_snapshot[`pigmento_${n}_nombre`]?.trim()).map(n=>`${esc(row.receta_snapshot[`pigmento_${n}_nombre`])} · ${row.receta_snapshot[`pigmento_${n}_pct`]==null?'A ojo según color':Number(row.receta_snapshot[`pigmento_${n}_pct`])+'%'}`).join('<br>')||'—':`${esc(row.pigmento_nombre||'—')} · ${Number(row.pigmento_porcentaje||0)}%`}</td>
         <td>${esc(row.grano_1_nombre||'Grano 1')} · ${Number(row.grano_1_porcentaje||0)}%</td>
         <td>${esc(row.grano_2_nombre||'Grano 2')} · ${Number(row.grano_2_porcentaje||0)}%</td>
         <td>${esc(row.grano_3_nombre||'Grano 3')} · ${Number(row.grano_3_porcentaje||0)}%</td>
@@ -3943,7 +3956,7 @@ async function openOrder(id){
         <td>
           <div class="dosage-actions-cell">
             <button type="button" class="dosage-icon-btn" title="Ver detalle" data-dosage-detail="${row.id}">👁️</button>
-            <button type="button" class="dosage-icon-btn" title="Editar fundida" data-dosage-edit="${row.id}">✏️</button>
+            ${row.receta_snapshot?'':`<button type="button" class="dosage-icon-btn" title="Editar fundida" data-dosage-edit="${row.id}">✏️</button>`}
             <button type="button" class="dosage-icon-btn danger" title="Eliminar fundida" data-dosage-delete="${row.id}">🗑️</button>
           </div>
         </td>
@@ -3968,7 +3981,7 @@ async function openOrder(id){
               <h3>Detalle de la fundida</h3>
               <p>${row.fecha_fundida
                 ? new Date(row.fecha_fundida+'T12:00:00').toLocaleDateString('es-CO')
-                : 'Sin fecha'} · ${Number(row.total_kg||0).toLocaleString('es-CO',{maximumFractionDigits:2})} kg</p>
+                : 'Sin fecha'} · ${Number(row.total_kg||0).toLocaleString('es-CO',{maximumFractionDigits:3})} kg</p>
             </div>
             <button type="button" id="closeDosageDetail" class="btn secondary">Cerrar</button>
           </div>
@@ -3978,12 +3991,13 @@ async function openOrder(id){
             <div><small>Fecha</small><strong>${row.fecha_fundida
               ? new Date(row.fecha_fundida+'T12:00:00').toLocaleDateString('es-CO')
               : '—'}</strong></div>
-            <div><small>Peso fabricado</small><strong>${Number(row.total_kg||0).toLocaleString('es-CO',{maximumFractionDigits:2})} kg</strong></div>
+            <div><small>Peso fabricado</small><strong>${Number(row.total_kg||0).toLocaleString('es-CO',{maximumFractionDigits:3})} kg</strong></div>
             <div><small>Registrado</small><strong>${row.created_at
               ? new Date(row.created_at).toLocaleString('es-CO')
               : '—'}</strong></div>
           </div>
 
+          ${row.receta_snapshot?`<p><strong>${esc(row.item_codigo||'Ítem')}</strong> · ${esc(row.mezcla_nombre||'Mezcla')}</p>`:''}
           <h4>Componentes de la mezcla</h4>
           ${components.length?`
             <div class="dosage-components-table">
@@ -3992,16 +4006,16 @@ async function openOrder(id){
               </div>
               ${components.map(([name,value])=>`
                 <div class="dosage-component-row">
-                  <strong>${esc(name)}</strong>
-                  <span>${Number(value?.cantidad||0).toLocaleString('es-CO',{
-                    maximumFractionDigits:value?.unidad==='ml'?0:2
-                  })} ${esc(value?.unidad||'')}</span>
+                  <strong>${esc(name)}${value?.referencia?' · '+esc(value.referencia):''}</strong>
+                  <span>${value?.a_ojo || value?.cantidad===null?'A ojo según color':`${Number(value?.cantidad||0).toLocaleString('es-CO',{
+                    maximumFractionDigits:4
+                  })} ${esc(value?.unidad||'')}`}</span>
                 </div>
               `).join('')}
             </div>
           `:'<div class="empty">Este registro no tiene componentes guardados.</div>'}
 
-          <div class="dosage-material-detail">
+          ${row.receta_snapshot?'':`<div class="dosage-material-detail">
             <div>
               <small>Pigmento</small>
               <strong>${esc(row.pigmento_nombre||'—')}</strong>
@@ -4022,7 +4036,7 @@ async function openOrder(id){
               <strong>${esc(row.grano_3_nombre||'—')}</strong>
               <span>${Number(row.grano_3_porcentaje||0)}%</span>
             </div>
-          </div>
+          </div>`}
 
           <div class="dosage-observation">
             <small>Observación</small>
@@ -4200,6 +4214,7 @@ async function openOrder(id){
     await loadOrderDosageRecords();
   };
 
+  drawer._reloadDosageRecords=loadOrderDosageRecords;
   loadOrderDosageRecords();
 
   const renderDocument=()=>{

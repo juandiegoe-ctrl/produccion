@@ -69,3 +69,17 @@ muestra la indicación sin inventar un peso; el resultado presenta un subtotal d
 las cantidades calculadas. Las recetas anteriores funcionan sin pigmentos.
 La ampliación está en `db/mezclas-pigmentos.sql`, aplicada como
 `add_two_optional_mixture_pigments`.
+
+## Registro de dosificaciones por ítem
+
+Al generar una dosificación, **Kg a fabricar** se puede cambiar sin modificar el
+peso del ítem. Las cantidades se recalculan con ese valor. **Registrar** guarda
+fecha, kg, ítem, mezcla y una copia de la receta y cantidades usadas en la pestaña
+**Registros**, a continuación de Mezclas. Los registros conservan los pigmentos
+«a ojo» y no cambian al editar una receta. El identificador del registro evita
+crear duplicados al reintentar un guardado cuya respuesta se interrumpió.
+
+Los registros históricos siguen disponibles; los registros creados desde ítems
+se consultan como una copia fija de la dosificación utilizada. La ampliación
+`db/dosificacion-items.sql` se aplicó como
+`save_item_dosage_batches_with_recipe_snapshots`.

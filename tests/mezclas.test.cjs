@@ -56,3 +56,27 @@ test('rejects invalid pigment percentages and unnamed dosages',()=>{
  for(const pct of [-1,101,NaN,Infinity,''])assert.throws(()=>context.validateProductionMixture({...recipe,pigmento_1_nombre:'Negro',pigmento_1_pct:pct}),/entre 0 y 100/);
  assert.throws(()=>context.validateProductionMixture({...recipe,pigmento_2_nombre:'',pigmento_2_pct:2}),/escribe el nombre/);
 });
+test('batch weight overrides item weight and saves an independent recipe snapshot',()=>{
+ const item={id:'item-1',codigo:'001-001',peso_kg:50};
+ const mix={...recipe,id:'mix-1',pigmento_1_nombre:'Negro',pigmento_1_pct:2,pigmento_2_nombre:'Kolanil',pigmento_2_pct:null};
+ const record=context.buildProductionDosageRecord(mix,item,'order-1',75,'2026-11-11','batch-1');
+ assert.equal(record.id,'batch-1');
+ assert.equal(record.total_kg,75);
+ assert.equal(item.peso_kg,50);
+ assert.equal(record.item_id,'item-1');
+ assert.equal(record.mezcla_id,'mix-1');
+ assert.equal(record.componentes.Cemento.cantidad,23.25);
+ assert.equal(record.componentes['Grano 1'].cantidad,7.5);
+ assert.equal(record.componentes['Pigmento 1'].cantidad,0.465);
+ assert.equal(record.componentes['Pigmento 2'].cantidad,null);
+ assert.equal(record.componentes['Pigmento 2'].a_ojo,true);
+ mix.grano_1_pct=99;mix.nombre='Changed';
+ assert.equal(record.receta_snapshot.grano_1_pct,10);
+ assert.equal(record.mezcla_nombre,'Pedestal');
+});
+test('batch registration rejects invalid dates and unsupported kg precision',()=>{
+ const build=(kg,date)=>context.buildProductionDosageRecord(recipe,{id:'item-1'},'order-1',kg,date,'batch-1');
+ for(const date of ['', '2026-02-30','2026-13-11','2026-1-1'])assert.throws(()=>build(50,date),/fecha válida/);
+ assert.throws(()=>build(50.1234,'2026-11-11'),/3 decimales/);
+ assert.equal(build(50.123,'2026-11-11').total_kg,50.123);
+});

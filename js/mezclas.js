@@ -45,6 +45,28 @@ function calculateProductionMixture(recipe,weight){
   return {weight:kg,components,hasUnmeasuredPigments:components.some(m=>m.amount===null),totalKg:components.filter(m=>m.unit==='kg'&&m.amount!==null).reduce((sum,m)=>sum+m.amount,0),totalMl:components.filter(m=>m.unit==='ml').reduce((sum,m)=>sum+m.amount,0)};
 }
 
+function buildProductionDosageRecord(recipe,item,orderId,weight,date,id){
+  const dosage=calculateProductionMixture(recipe,weight);
+  if(Math.abs(dosage.weight*1000-Math.round(dosage.weight*1000))>0.00001)throw Error('Usa hasta 3 decimales en los kg a fabricar.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date+'T12:00:00Z')) || new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date)throw Error('Selecciona una fecha válida.');
+  const payload={
+    id,orden_id:orderId,item_id:item.id,mezcla_id:recipe.id,
+    item_codigo:item.codigo||'',mezcla_nombre:recipe.nombre,
+    receta_snapshot:JSON.parse(JSON.stringify(recipe)),
+    fecha_fundida:date,total_kg:dosage.weight,
+    pigmento_nombre:recipe.pigmento_1_nombre||null,
+    pigmento_porcentaje:Number(recipe.pigmento_1_pct??0),
+    componentes:Object.fromEntries(dosage.components.map(component=>[
+      component.label,{cantidad:component.amount,unidad:component.unit,referencia:component.name,a_ojo:component.amount===null}
+    ]))
+  };
+  MIXTURE_GRAINS.forEach(n=>{
+    payload[`grano_${n}_nombre`]=[recipe[`grano_${n}_color`],recipe[`grano_${n}_tamano`]].filter(Boolean).join(' · ')||null;
+    payload[`grano_${n}_porcentaje`]=Number(recipe[`grano_${n}_pct`]||0);
+  });
+  return payload;
+}
+
 async function mountProductionMixtures(drawer,order){
   const panel=drawer.querySelector('#mixtureLibrary');
   if(!panel)return;
@@ -145,11 +167,67 @@ async function mountProductionMixtures(drawer,order){
       const {data:recipe,error}=await db.from('mezclas_produccion').select('*').eq('id',item.mezcla_id).single();
       if(error)throw error;
       if(!recipe)throw Error('La mezcla asignada no está disponible. Vuelve a abrir la orden.');
-      const dosage=calculateProductionMixture(recipe,item.peso_kg);
+      validateProductionMixture(recipe);
+      const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Bogota'}).format(new Date());
       result.classList.remove('mixture-error');
-      result.innerHTML=`<h4>Dosificación · ${esc(recipe.nombre)}</h4><p>${esc(item.codigo||'Ítem')} · Peso del elemento: <strong>${fmt(dosage.weight)} kg</strong></p>
-      <div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong></span><strong>${m.amount===null?'A ojo según color':fmt(m.amount)+' '+m.unit}</strong></div>`).join('')}</div>
-      <p><strong>${dosage.hasUnmeasuredPigments?'Subtotal calculado':'Total a preparar'}: ${fmt(dosage.totalKg)} kg + ${fmt(dosage.totalMl)} ml de aditivo</strong></p>`;
+      result.innerHTML=`<h4>Dosificación · ${esc(recipe.nombre)}</h4><p>${esc(item.codigo||'Ítem')} · Peso del elemento: <strong>${fmt(Number(item.peso_kg)||0)} kg</strong></p>
+      <form class="item-dosage-form">
+        <div class="grid">
+          <div class="field"><label>Kg a fabricar<input class="item-dosage-kg" type="number" min="0.001" step="0.001" required value="${Number(item.peso_kg)>0?Number(item.peso_kg):''}"></label></div>
+          <div class="field"><label>Fecha<input class="item-dosage-date" type="date" required value="${today}"></label></div>
+        </div>
+        <div class="item-dosage-preview"></div>
+        <p class="item-dosage-status" role="status"></p>
+        <button type="submit" class="btn primary item-dosage-register">Registrar</button>
+      </form>`;
+      const form=result.querySelector('form');
+      const kgInput=form.querySelector('.item-dosage-kg');
+      const dateInput=form.querySelector('.item-dosage-date');
+      const preview=form.querySelector('.item-dosage-preview');
+      const register=form.querySelector('.item-dosage-register');
+      const status=form.querySelector('.item-dosage-status');
+      let registrationId=null;
+      let saving=false;
+      let registered=false;
+      const recalculate=()=>{
+        if(saving)return;
+        registered=false;registrationId=null;
+        status.textContent='';status.classList.remove('mixture-error');
+        register.textContent='Registrar';
+        try{
+          const dosage=calculateProductionMixture(recipe,kgInput.value);
+          preview.innerHTML=`<div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong></span><strong>${m.amount===null?'A ojo según color':fmt(m.amount)+' '+m.unit}</strong></div>`).join('')}</div>
+          <p><strong>${dosage.hasUnmeasuredPigments?'Subtotal calculado':'Total a preparar'}: ${fmt(dosage.totalKg)} kg + ${fmt(dosage.totalMl)} ml de aditivo</strong></p>`;
+          register.disabled=false;
+        }catch(error){preview.innerHTML='';status.textContent=error.message;status.classList.add('mixture-error');register.disabled=true}
+      };
+      kgInput.addEventListener('input',recalculate);
+      dateInput.addEventListener('input',recalculate);
+      form.onsubmit=async event=>{
+        event.preventDefault();
+        if(saving||registered)return;
+        try{
+          registrationId ||= crypto.randomUUID();
+          const payload=buildProductionDosageRecord(recipe,item,order.id,kgInput.value,dateInput.value,registrationId);
+          saving=true;register.disabled=true;kgInput.disabled=true;dateInput.disabled=true;select.disabled=true;button.disabled=true;
+          register.textContent='Registrando…';status.textContent='';status.classList.remove('mixture-error');
+          let {data,error}=await db.from('registros_dosificacion').insert(payload).select('id').single();
+          if(error?.code==='23505'){
+            ({data,error}=await db.from('registros_dosificacion').select('id').eq('id',registrationId).eq('orden_id',order.id).single());
+          }
+          if(error)throw error;
+          if(data?.id!==registrationId)throw Error('No se pudo confirmar el registro.');
+          registered=true;register.textContent='Registrado';status.textContent='Dosificación registrada.';
+          try{
+            if(isCurrent()){
+              await drawer._reloadDosageRecords?.();
+              if(isCurrent())drawer.querySelector('[data-tab="castingRecords"]')?.click();
+            }
+          }catch(error){status.textContent='Registrado. No se pudo actualizar el listado.'}
+        }catch(error){status.textContent=error.message||'No se pudo registrar la dosificación.';status.classList.add('mixture-error');register.textContent='Registrar'}
+        finally{saving=false;register.disabled=registered;kgInput.disabled=false;dateInput.disabled=false;select.disabled=false;button.disabled=false}
+      };
+      recalculate();
     }catch(error){result.textContent=storageError(error);result.classList.add('mixture-error')}
     finally{button.disabled=false;select.disabled=false}
     result.classList.remove('hidden');
