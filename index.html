@@ -2970,6 +2970,28 @@ hr{display:none!important}
   white-space:nowrap;
 }
 
+/* Keep print isolation after all responsive rules. */
+@media print{
+  body > :not(#drawer),
+  #drawer > .drawer-card > :not(#document),
+  #drawer .no-print{
+    display:none!important;
+  }
+  #drawer.hidden{
+    display:none!important;
+  }
+  #drawer > .drawer-card{
+    min-height:0!important;
+    max-height:none!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  #drawer #document .production-table{
+    min-width:0!important;
+  }
+}
+
 </style>
 </head>
 <body>
