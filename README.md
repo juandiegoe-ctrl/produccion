@@ -42,3 +42,23 @@ El siguiente paso es conectar Supabase para compartir datos entre usuarios.
 - Fecha de entrega tomada de la entrega estimada.
 - Ítems importados desde PRODUCCION.
 - Nueva clave de almacenamiento para forzar la recarga de datos.
+
+## Mezclas por ítem
+
+En una orden, abre **Mezclas → Crear mezcla**. Define nombre, cemento blanco/gris,
+color de ambas arenas y, para cada grano utilizado, color/referencia, tamaño y porcentaje.
+Las recetas se comparten entre órdenes. En **Ítems**, selecciona una mezcla; la asignación
+se guarda automáticamente. **Generar dosificación** consulta la receta guardada y calcula
+las cantidades con el peso actual del ítem.
+
+Se conserva `DOSAGE_BASE`: por cada 100 kg de elemento, 31 kg de cemento,
+19,4 kg de arena gruesa, 29,1 kg de arena fina, 6,9 kg de agua, 700 ml de
+superplastificante y 8,4 kg de carbonato. Los granos se **suman** como porcentaje
+del peso del elemento, sin reducir arenas. El total distingue kg y ml.
+Los registros anteriores de fundidas siguen disponibles en la pestaña Mezclas.
+
+La ampliación de base de datos está documentada en `db/mezclas.sql` (aplicada en
+Supabase con el nombre `add_production_mixtures_and_item_assignment`). Conserva
+los permisos de producción y añade RLS a las recetas compartidas.
+
+Verificación de cálculo y validaciones: `node --test tests/mezclas.test.cjs`.

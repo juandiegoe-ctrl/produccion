@@ -2993,6 +2993,7 @@ hr{display:none!important}
 }
 
 </style>
+<link rel="stylesheet" href="css/mezclas.css">
 </head>
 <body>
 <div id="loginScreen" class="login-screen">
@@ -3135,6 +3136,7 @@ hr{display:none!important}
 <div id="drawer" class="drawer hidden"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/mezclas.js"></script>
 <script>
 
 const SUPABASE_URL='https://ujyhzcomdzhppggteqnv.supabase.co';
@@ -3400,6 +3402,7 @@ async function loadOrders({openRequested=true}={}){
 
 async function openNew(){
   const drawer=$('#drawer');
+  drawer._mixtures=null;
   drawer.innerHTML=`<div class="drawer-card">
     <div class="drawer-head">
       <div><h2>Nueva orden</h2><p>Información general de la OP.</p></div>
@@ -3453,6 +3456,7 @@ async function openOrder(id){
   if(!order) return;
 
   const drawer=$('#drawer');
+  drawer._mixtures=null;
   drawer.innerHTML=`<div class="drawer-card">
     <div class="drawer-head">
       <div>
@@ -3466,7 +3470,7 @@ async function openOrder(id){
       <button class="tab active" data-tab="details">Orden</button>
       <button class="tab" data-tab="items">Ítems</button>
       <button class="tab" data-tab="costs">Costos</button>
-      <button class="tab" data-tab="dosageRecords">Registros de dosificación</button>
+      <button class="tab" data-tab="dosageRecords">Mezclas</button>
       <button class="tab" data-tab="document">Documento OP</button>
       <button class="tab" data-tab="history">Historial</button>
     </nav>
@@ -3600,9 +3604,10 @@ async function openOrder(id){
 
 
     <section id="dosageRecords" class="panel hidden">
+      <div id="mixtureLibrary" class="card" style="margin-bottom:16px"></div>
       <div class="card">
         <div class="section-head">
-          <div><h3>Registros de dosificación</h3></div>
+          <div><h3>Historial de fundidas</h3></div>
           <button id="newDosageForOrder" class="btn primary">+ Nueva fundida</button>
         </div>
 
@@ -4332,6 +4337,8 @@ async function openOrder(id){
       ${item.comentarios?`<div class="item-comments-compact"><small>Comentarios</small><span>${esc(item.comentarios)}</span></div>`:''}
     </article>`).join(''):`<div class="empty">Todavía no hay ítems.</div>`;
 
+    drawer._mixtures?.renderItems();
+
     list.querySelectorAll('[data-state]').forEach(select=>{
       select.onchange=async()=>{
         const item=order.items.find(candidate=>candidate.id===select.dataset.state);
@@ -4846,6 +4853,7 @@ async function openOrder(id){
   renderItems();
   renderDocument();
   renderHistory();
+  await mountProductionMixtures(drawer,order);
 }
 
 
