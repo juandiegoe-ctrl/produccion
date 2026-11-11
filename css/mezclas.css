@@ -133,3 +133,5 @@
 #items .item-card-v58 .item-code{font-size:24px!important;line-height:1.15!important;font-weight:850;letter-spacing:.02em;font-variant-numeric:tabular-nums;margin-bottom:4px}
 
 #items #itemForm.inline-item-edit{background:#e2e4e7!important}
+
+#itemForm .item-deferred-field,#items .priority-badge{display:none!important}
