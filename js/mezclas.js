@@ -46,6 +46,7 @@ function calculateProductionMixture(recipe,weight){
 }
 
 function buildProductionDosageRecord(recipe,item,orderId,weight,date,id,comments=''){
+  if(recipe.orden_id && recipe.orden_id!==orderId)throw Error('La mezcla pertenece a otra orden.');
   const dosage=calculateProductionMixture(recipe,weight);
   if(Math.abs(dosage.weight*1000-Math.round(dosage.weight*1000))>0.00001)throw Error('Usa hasta 3 decimales en los kg a fabricar.');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date+'T12:00:00Z')) || new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date)throw Error('Selecciona una fecha válida.');
@@ -118,7 +119,7 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
   let editingId=null;
   let loading=false;
   let recipeRequest=0;
-  const storageError=error=>error?.code==='23505'?'Ya existe una mezcla con ese nombre. Usa otro nombre.':(error?.message||'No se pudo guardar el cambio.');
+  const storageError=error=>error?.code==='23505'?'Ya existe una mezcla con ese nombre en esta orden.':(error?.message||'No se pudo guardar el cambio.');
   panel.innerHTML=`
     <div class="section-head"><div><h3>Mezclas</h3></div><button type="button" class="btn primary" id="newMixture">+ Crear mezcla</button></div>
     <p class="mixture-status" role="status" id="mixtureLibraryStatus">Cargando mezclas…</p>
@@ -219,7 +220,7 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
     result.textContent='Calculando dosificación…';result.classList.remove('hidden','mixture-error');
     try{
       if(!item.mezcla_id)throw Error('Asigna y guarda una mezcla antes de generar la dosificación.');
-      const {data:recipe,error}=await db.from('mezclas_produccion').select('*').eq('id',item.mezcla_id).single();
+      const {data:recipe,error}=await db.from('mezclas_produccion').select('*').eq('id',item.mezcla_id).eq('orden_id',order.id).single();
       if(error)throw error;
       if(!dialog.open||!isCurrent())return;
       if(!recipe)throw Error('La mezcla asignada no está disponible. Vuelve a abrir la orden.');
@@ -318,7 +319,7 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
         select.disabled=true;generate.disabled=true;
         status.textContent='Guardando mezcla…';status.classList.remove('mixture-error');status.classList.add('mixture-visually-hidden');
         try{
-          const {data,error}=await db.from('items_produccion').update({mezcla_id:next}).eq('id',item.id).select('id,mezcla_id').single();
+          const {data,error}=await db.from('items_produccion').update({mezcla_id:next}).eq('id',item.id).eq('orden_id',order.id).select('id,mezcla_id').single();
           if(error)throw error;
           if(!data || data.mezcla_id!==next)throw Error('No se pudo confirmar la asignación de la mezcla.');
           item.mezcla_id=data.mezcla_id;
@@ -334,7 +335,7 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
   const reload=async()=>{
     const request=++recipeRequest;
     loading=true;onChange({loading:true});
-    const {data,error}=await db.from('mezclas_produccion').select('*').order('nombre');
+    const {data,error}=await db.from('mezclas_produccion').select('*').eq('orden_id',order.id).order('nombre');
     if(!isCurrent() || request!==recipeRequest)return;
     loading=false;
     if(error){onChange({error});throw error}
@@ -349,9 +350,9 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
     const button=q('[type="submit"]');
     const side=drawer._mixturePanel;
     try{
-      const recipe=validateProductionMixture(getRecipe());
+      const recipe={...validateProductionMixture(getRecipe()),orden_id:order.id};
       button.disabled=true;side?.setBusy(true);q('#mixtureSaveStatus').textContent='Guardando…';
-      const query=editingId?db.from('mezclas_produccion').update(recipe).eq('id',editingId):db.from('mezclas_produccion').insert(recipe);
+      const query=editingId?db.from('mezclas_produccion').update(recipe).eq('id',editingId).eq('orden_id',order.id):db.from('mezclas_produccion').insert(recipe);
       const {data,error}=await query.select('id').single();
       if(error)throw error;
       if(!data)throw Error('No se pudo confirmar el guardado.');
