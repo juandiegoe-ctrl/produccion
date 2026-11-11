@@ -87,3 +87,9 @@ test('batch comments are saved and empty comments stay optional',()=>{
  assert.equal(build('   ').observacion,null);
  assert.equal(build(undefined).observacion,null);
 });
+
+test('batch records cannot use a recipe belonging to another order',()=>{
+ const scoped={...recipe,id:'mix-1',orden_id:'order-1'};
+ assert.throws(()=>context.buildProductionDosageRecord(scoped,{id:'item-2'},'order-2',50,'2026-11-11','batch-1'),/otra orden/);
+ assert.equal(context.buildProductionDosageRecord(scoped,{id:'item-1'},'order-1',50,'2026-11-11','batch-1').mezcla_id,'mix-1');
+});

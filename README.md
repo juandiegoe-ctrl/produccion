@@ -47,7 +47,7 @@ El siguiente paso es conectar Supabase para compartir datos entre usuarios.
 
 En una orden, abre **Mezclas → Crear mezcla**. Define nombre, cemento blanco/gris,
 color de ambas arenas y, para cada grano utilizado, color/referencia, tamaño y porcentaje.
-Las recetas se comparten entre órdenes. En **Ítems**, selecciona una mezcla; la asignación
+Cada receta pertenece únicamente a la orden donde se crea. En **Ítems**, selecciona una mezcla; la asignación
 se guarda automáticamente. **Generar dosificación** consulta la receta guardada y calcula
 las cantidades con el peso actual del ítem.
 
@@ -59,7 +59,7 @@ Los registros anteriores de fundidas siguen disponibles en la pestaña Mezclas.
 
 La ampliación de base de datos está documentada en `db/mezclas.sql` (aplicada en
 Supabase con el nombre `add_production_mixtures_and_item_assignment`). Conserva
-los permisos de producción y añade RLS a las recetas compartidas.
+los permisos de producción y añade RLS a las recetas de producción.
 
 Verificación de cálculo y validaciones: `node --test tests/mezclas.test.cjs`.
 
@@ -96,3 +96,11 @@ utilizada en esa orden, con cemento, arenas, granos (color, tamaño y porcentaje
 y pigmentos (porcentaje sobre cemento o «a ojo»). Se actualiza al asignar o editar
 una mezcla y al abrir el documento; la impresión espera a que estén disponibles
 las recetas asignadas.
+
+Las mezclas están vinculadas por `orden_id`: nombres como **MESAS** pueden
+repetirse en órdenes distintas. El listado, los selectores, la edición, la
+dosificación y el PDF consultan solo las recetas de la orden abierta. Las claves
+foráneas impiden asignar una mezcla a ítems o registros de otra orden. La mezcla
+existente se vinculó a la única orden que la utilizaba, conservando asignaciones
+y registros. Cambio de base de datos: `db/mezclas-por-orden.sql`, aplicado como
+`scope_production_mixtures_to_their_order`.
