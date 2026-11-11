@@ -2970,6 +2970,17 @@ hr{display:none!important}
   white-space:nowrap;
 }
 
+/* Order navigation and compact header actions. */
+#drawer{z-index:100}
+.order-drawer .drawer-title{flex:1;min-width:0}
+.order-drawer .drawer-title h2,.order-drawer .drawer-title p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-drawer .drawer-title h2{line-height:24px}
+.order-drawer .drawer-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.order-drawer .drawer-action,.order-drawer .drawer-actions .close{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 40px;padding:0;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:21px;font-weight:700}
+.order-drawer .drawer-action.active{background:#000;color:#fff;border-color:#000}
+.order-drawer .drawer-action:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+@media(max-width:760px){.order-drawer .drawer-head{min-height:73px;gap:10px}.order-drawer .drawer-actions{gap:5px}}
+
 /* Keep print isolation after all responsive rules. */
 @media print{
   body > :not(#drawer),
@@ -3457,22 +3468,25 @@ async function openOrder(id){
 
   const drawer=$('#drawer');
   drawer._mixtures=null;
-  drawer.innerHTML=`<div class="drawer-card">
+  drawer.innerHTML=`<div class="drawer-card order-drawer">
     <div class="drawer-head">
-      <div>
-        <h2>${esc(order.numero_op||'SIN OP')} — ${esc(order.cliente)}</h2>
+      <div class="drawer-title">
+        <h2 title="${esc(order.numero_op||'SIN OP')} — ${esc(order.cliente)}">${esc(order.numero_op||'SIN OP')} — ${esc(order.cliente)}</h2>
         <p>${esc(order.producto||'')}</p>
       </div>
-      <button class="close">✕</button>
+      <div class="drawer-actions">
+        <button type="button" class="drawer-action" data-tab="document" aria-label="Documento e impresión" title="Documento e impresión" aria-pressed="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/><path d="M18 12h.01"/></svg>
+        </button>
+        <button type="button" class="drawer-action" data-tab="costs" aria-label="Costos" title="Costos" aria-pressed="false"><span aria-hidden="true">$</span></button>
+        <button type="button" class="close" aria-label="Cerrar orden" title="Cerrar orden">✕</button>
+      </div>
     </div>
 
-    <nav class="tabs">
-      <button class="tab active" data-tab="details">Orden</button>
-      <button class="tab" data-tab="items">Ítems</button>
-      <button class="tab" data-tab="costs">Costos</button>
-      <button class="tab" data-tab="dosageRecords">Mezclas</button>
-      <button class="tab" data-tab="document">Documento OP</button>
-      <button class="tab" data-tab="history">Historial</button>
+    <nav class="tabs" aria-label="Secciones de la orden">
+      <button class="tab active" data-tab="details" aria-pressed="true">Orden</button>
+      <button class="tab" data-tab="items" aria-pressed="false">Ítems</button>
+      <button class="tab" data-tab="dosageRecords" aria-pressed="false">Mezclas</button>
     </nav>
 
     <section id="details" class="panel">
@@ -3759,11 +3773,12 @@ async function openOrder(id){
 
   drawer.querySelector('.close').onclick=closeDrawer;
 
-  drawer.querySelectorAll('.tab').forEach(button=>{
+  drawer.querySelectorAll('[data-tab]').forEach(button=>{
     button.onclick=()=>{
-      drawer.querySelectorAll('.tab').forEach(tab=>
-        tab.classList.toggle('active',tab===button)
-      );
+      drawer.querySelectorAll('[data-tab]').forEach(tab=>{
+        tab.classList.toggle('active',tab===button);
+        tab.setAttribute('aria-pressed',String(tab===button));
+      });
       drawer.querySelectorAll('.panel').forEach(panel=>
         panel.classList.toggle('hidden',panel.id!==button.dataset.tab)
       );
@@ -4259,7 +4274,7 @@ async function openOrder(id){
 
   const refreshCurrentOrder=async()=>{
     const activeTab=
-      drawer.querySelector('.tab.active')?.dataset.tab || 'details';
+      drawer.querySelector('[data-tab].active')?.dataset.tab || 'details';
     const drawerCard=drawer.querySelector('.drawer-card');
     const previousScroll=drawerCard?.scrollTop || 0;
 
@@ -4271,7 +4286,7 @@ async function openOrder(id){
 
     const reopenedDrawer=$('#drawer');
     const targetTab=reopenedDrawer.querySelector(
-      `.tab[data-tab="${activeTab}"]`
+      `[data-tab="${activeTab}"]`
     );
     if(targetTab)targetTab.click();
 
@@ -4852,7 +4867,6 @@ async function openOrder(id){
 
   renderItems();
   renderDocument();
-  renderHistory();
   await mountProductionMixtures(drawer,order);
 }
 
