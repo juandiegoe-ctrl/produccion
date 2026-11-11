@@ -16,3 +16,4 @@
 @media(max-width:520px){.mixture-recipe{align-items:flex-start}.mixture-item-controls{align-items:stretch}.mixture-generate{width:100%}}
 .mixture-grain{margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:12px;min-width:0}
 .mixture-grain legend{font-size:13px;font-weight:700;padding:0 6px}
+#mixtureEditor .field.hidden{display:none!important}

@@ -62,3 +62,10 @@ Supabase con el nombre `add_production_mixtures_and_item_assignment`). Conserva
 los permisos de producción y añade RLS a las recetas compartidas.
 
 Verificación de cálculo y validaciones: `node --test tests/mezclas.test.cjs`.
+
+Las mezclas incluyen dos pigmentos opcionales, cada uno con nombre/color libre y
+porcentaje estimado sobre el cemento o modo **A ojo según color**. El segundo modo
+muestra la indicación sin inventar un peso; el resultado presenta un subtotal de
+las cantidades calculadas. Las recetas anteriores funcionan sin pigmentos.
+La ampliación está en `db/mezclas-pigmentos.sql`, aplicada como
+`add_two_optional_mixture_pigments`.

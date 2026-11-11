@@ -1,5 +1,6 @@
 /* Keep the existing DOSAGE_BASE formula. Grains are additional percentages of item weight. */
 const MIXTURE_GRAINS = [1,2,3];
+const MIXTURE_PIGMENTS = [1,2];
 
 function validateProductionMixture(recipe){
   if(!recipe.nombre?.trim() || recipe.nombre.trim().length>120)throw Error('Escribe un nombre de mezcla de hasta 120 caracteres.');
@@ -12,6 +13,13 @@ function validateProductionMixture(recipe){
     if(!Number.isFinite(pct)||pct<0||pct>100)throw Error(`Grano ${n}: el porcentaje debe estar entre 0 y 100.`);
     if(pct>0 && (!recipe[`grano_${n}_color`]?.trim() || !recipe[`grano_${n}_tamano`]?.trim()))throw Error(`Grano ${n}: indica el color y el tamaño.`);
     if((recipe[`grano_${n}_color`]||'').length>120 || (recipe[`grano_${n}_tamano`]||'').length>120)throw Error(`Grano ${n}: usa referencias de hasta 120 caracteres.`);
+  }
+  for(const n of MIXTURE_PIGMENTS){
+    const name=recipe[`pigmento_${n}_nombre`]||'';
+    const pct=recipe[`pigmento_${n}_pct`];
+    if(name.length>120)throw Error(`Pigmento ${n}: usa un nombre de hasta 120 caracteres.`);
+    if(pct!=null && (pct==='' || !['number','string'].includes(typeof pct) || !Number.isFinite(Number(pct)) || Number(pct)<0 || Number(pct)>100))throw Error(`Pigmento ${n}: el porcentaje debe estar entre 0 y 100.`);
+    if(pct!=null && !name.trim())throw Error(`Pigmento ${n}: escribe el nombre.`);
   }
   return recipe;
 }
@@ -27,7 +35,14 @@ function calculateProductionMixture(recipe,weight){
     const percent=Number(recipe[`grano_${n}_pct`]);
     if(percent>0)components.push({label:`Grano ${n}`,name:`${recipe[`grano_${n}_color`]} · ${recipe[`grano_${n}_tamano`]}`,amount:kg*percent/100,unit:'kg',basis:`${percent.toLocaleString('es-CO')}% del peso del elemento · adicional`});
   });
-  return {weight:kg,components,totalKg:components.filter(m=>m.unit==='kg').reduce((sum,m)=>sum+m.amount,0),totalMl:components.filter(m=>m.unit==='ml').reduce((sum,m)=>sum+m.amount,0)};
+  const cementKg=components.find(m=>m.label==='Cemento').amount;
+  MIXTURE_PIGMENTS.forEach(n=>{
+    const name=recipe[`pigmento_${n}_nombre`]?.trim();
+    if(!name)return;
+    const percent=recipe[`pigmento_${n}_pct`];
+    components.push({label:`Pigmento ${n}`,name,amount:percent==null?null:cementKg*Number(percent)/100,unit:'kg'});
+  });
+  return {weight:kg,components,hasUnmeasuredPigments:components.some(m=>m.amount===null),totalKg:components.filter(m=>m.unit==='kg'&&m.amount!==null).reduce((sum,m)=>sum+m.amount,0),totalMl:components.filter(m=>m.unit==='ml').reduce((sum,m)=>sum+m.amount,0)};
 }
 
 async function mountProductionMixtures(drawer,order){
@@ -61,6 +76,11 @@ async function mountProductionMixtures(drawer,order){
         <div class="field"><label for="mixGrainPct_${n}">% sobre el peso del elemento</label><input id="mixGrainPct_${n}" type="number" min="0" max="100" step="0.0001" value="0" required></div>
       </div></fieldset>`).join('')}
       </div>
+      ${MIXTURE_PIGMENTS.map(n=>`<fieldset class="mixture-grain"><legend>Pigmento ${n}</legend><div class="grid">
+        <div class="field"><label for="mixPigmentName_${n}">Nombre / color</label><input id="mixPigmentName_${n}" maxlength="120" placeholder="Negro, Kolanil…"></div>
+        <div class="field"><label for="mixPigmentMode_${n}">Dosificación</label><select id="mixPigmentMode_${n}"><option value="percent">Porcentaje estimado</option><option value="eye">A ojo según color</option></select></div>
+        <div class="field" id="mixPigmentPctField_${n}"><label for="mixPigmentPct_${n}">% sobre el cemento</label><input id="mixPigmentPct_${n}" type="number" min="0" max="100" step="0.0001"></div>
+      </div></fieldset>`).join('')}
       <p id="mixtureSaveStatus" role="status"></p>
       <div class="mixture-actions"><button class="btn primary" type="submit">Guardar mezcla</button><button class="btn secondary" type="button" id="cancelMixture">Cancelar</button></div>
     </form>`;
@@ -69,8 +89,21 @@ async function mountProductionMixtures(drawer,order){
   const getRecipe=()=>{
     const recipe={nombre:q('#mixtureName').value.trim(),cemento_tipo:q('#mixtureCementType').value,arena_fina_color:q('#mixFineSandColor').value.trim(),arena_gruesa_color:q('#mixCoarseSandColor').value.trim()};
     MIXTURE_GRAINS.forEach(n=>{recipe[`grano_${n}_color`]=q('#mixGrainColor_'+n).value.trim();recipe[`grano_${n}_tamano`]=q('#mixGrainSize_'+n).value.trim();recipe[`grano_${n}_pct`]=Number(q('#mixGrainPct_'+n).value)});
+    MIXTURE_PIGMENTS.forEach(n=>{
+      recipe[`pigmento_${n}_nombre`]=q('#mixPigmentName_'+n).value.trim();
+      const raw=q('#mixPigmentPct_'+n).value;
+      const byEye=q('#mixPigmentMode_'+n).value==='eye';
+      if(recipe[`pigmento_${n}_nombre`] && !byEye && raw==='')throw Error(`Pigmento ${n}: indica el porcentaje o selecciona «A ojo según color».`);
+      recipe[`pigmento_${n}_pct`]=byEye||raw===''?null:Number(raw);
+    });
     return recipe;
   };
+  const syncPigmentMode=n=>{
+    const byEye=q('#mixPigmentMode_'+n).value==='eye';
+    q('#mixPigmentPct_'+n).disabled=byEye;
+    q('#mixPigmentPctField_'+n).classList.toggle('hidden',byEye);
+  };
+  MIXTURE_PIGMENTS.forEach(n=>q('#mixPigmentMode_'+n).onchange=()=>syncPigmentMode(n));
   const openEditor=recipe=>{
     editingId=recipe?.id||null;
     q('#mixtureEditor').reset();
@@ -84,13 +117,21 @@ async function mountProductionMixtures(drawer,order){
       q('#mixGrainSize_'+n).value=recipe?.[`grano_${n}_tamano`]||'';
       q('#mixGrainPct_'+n).value=recipe?.[`grano_${n}_pct`]||0;
     });
+    MIXTURE_PIGMENTS.forEach(n=>{
+      const name=recipe?.[`pigmento_${n}_nombre`]||'';
+      const pct=recipe?.[`pigmento_${n}_pct`];
+      q('#mixPigmentName_'+n).value=name;
+      q('#mixPigmentMode_'+n).value=name&&pct==null?'eye':'percent';
+      q('#mixPigmentPct_'+n).value=pct??'';
+      syncPigmentMode(n);
+    });
     q('#mixtureSaveStatus').textContent='';
     q('#mixtureSaveStatus').classList.remove('mixture-error');
     q('#mixtureEditor').classList.remove('hidden');
     q('#mixtureName').focus();
   };
   const renderLibrary=()=>{
-    q('#mixtureLibraryList').innerHTML=recipes.length?recipes.map(r=>`<article class="mixture-recipe"><div><strong>${esc(r.nombre)}</strong><small>Cemento ${r.cemento_tipo==='BLANCO'?'blanco':'gris'} · Arena fina ${esc(r.arena_fina_color)} · Arena gruesa ${esc(r.arena_gruesa_color)}${MIXTURE_GRAINS.filter(n=>Number(r[`grano_${n}_pct`])>0).map(n=>` · Grano ${n}: ${esc(r[`grano_${n}_color`])} / ${esc(r[`grano_${n}_tamano`])} (${fmt(r[`grano_${n}_pct`])}%)`).join('')}</small></div><button type="button" class="btn secondary" data-edit-mixture="${esc(r.id)}">Editar</button></article>`).join(''):'<p class="empty">Sin mezclas.</p>';
+    q('#mixtureLibraryList').innerHTML=recipes.length?recipes.map(r=>`<article class="mixture-recipe"><div><strong>${esc(r.nombre)}</strong><small>Cemento ${r.cemento_tipo==='BLANCO'?'blanco':'gris'} · Arena fina ${esc(r.arena_fina_color)} · Arena gruesa ${esc(r.arena_gruesa_color)}${MIXTURE_GRAINS.filter(n=>Number(r[`grano_${n}_pct`])>0).map(n=>` · Grano ${n}: ${esc(r[`grano_${n}_color`])} / ${esc(r[`grano_${n}_tamano`])} (${fmt(r[`grano_${n}_pct`])}%)`).join('')}${MIXTURE_PIGMENTS.filter(n=>r[`pigmento_${n}_nombre`]?.trim()).map(n=>` · Pigmento ${n}: ${esc(r[`pigmento_${n}_nombre`])} (${r[`pigmento_${n}_pct`]==null?'A ojo según color':fmt(r[`pigmento_${n}_pct`])+'%'})`).join('')}</small></div><button type="button" class="btn secondary" data-edit-mixture="${esc(r.id)}">Editar</button></article>`).join(''):'<p class="empty">Sin mezclas.</p>';
     q('#mixtureLibraryList').querySelectorAll('[data-edit-mixture]').forEach(button=>button.onclick=()=>openEditor(recipes.find(r=>r.id===button.dataset.editMixture)));
   };
   const renderDosage=async(host,item)=>{
@@ -107,8 +148,8 @@ async function mountProductionMixtures(drawer,order){
       const dosage=calculateProductionMixture(recipe,item.peso_kg);
       result.classList.remove('mixture-error');
       result.innerHTML=`<h4>Dosificación · ${esc(recipe.nombre)}</h4><p>${esc(item.codigo||'Ítem')} · Peso del elemento: <strong>${fmt(dosage.weight)} kg</strong></p>
-      <div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong></span><strong>${fmt(m.amount)} ${m.unit}</strong></div>`).join('')}</div>
-      <p><strong>Total a preparar: ${fmt(dosage.totalKg)} kg + ${fmt(dosage.totalMl)} ml de aditivo</strong></p>`;
+      <div class="mixture-dosage-rows">${dosage.components.map(m=>`<div><span><strong>${esc(m.label)}${m.name?' · '+esc(m.name):''}</strong></span><strong>${m.amount===null?'A ojo según color':fmt(m.amount)+' '+m.unit}</strong></div>`).join('')}</div>
+      <p><strong>${dosage.hasUnmeasuredPigments?'Subtotal calculado':'Total a preparar'}: ${fmt(dosage.totalKg)} kg + ${fmt(dosage.totalMl)} ml de aditivo</strong></p>`;
     }catch(error){result.textContent=storageError(error);result.classList.add('mixture-error')}
     finally{button.disabled=false;select.disabled=false}
     result.classList.remove('hidden');

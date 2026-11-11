@@ -33,3 +33,26 @@ test('rejects invalid weights, missing references and invalid percentages',()=>{
  assert.throws(()=>context.validateProductionMixture({...recipe,arena_fina_color:''}),/color de la arena/);
  assert.throws(()=>context.validateProductionMixture({...recipe,cemento_tipo:'OTRO'}),/blanco o gris/);
 });
+test('pigments use cement weight and contribute to the kg total',()=>{
+ const result=context.calculateProductionMixture({...recipe,pigmento_1_nombre:'Negro',pigmento_1_pct:2,pigmento_2_nombre:'Kolanil',pigmento_2_pct:1},50);
+ assert.equal(result.components.find(m=>m.label==='Pigmento 1').amount,0.31);
+ assert.equal(result.components.find(m=>m.label==='Pigmento 2').amount,0.155);
+ assert.ok(Math.abs(result.totalKg-55.365)<1e-10);
+ assert.equal(result.hasUnmeasuredPigments,false);
+});
+test('by-eye pigments preserve their name without inventing a quantity',()=>{
+ const result=context.calculateProductionMixture({...recipe,pigmento_1_nombre:'Negro',pigmento_1_pct:null,pigmento_2_nombre:'Kolanil',pigmento_2_pct:2},50);
+ assert.equal(result.components.find(m=>m.label==='Pigmento 1').amount,null);
+ assert.equal(result.components.find(m=>m.label==='Pigmento 1').name,'Negro');
+ assert.ok(Math.abs(result.totalKg-55.21)<1e-10);
+ assert.equal(result.hasUnmeasuredPigments,true);
+});
+test('unused pigments remain compatible with older recipes',()=>{
+ const result=context.calculateProductionMixture({...recipe,pigmento_1_nombre:'',pigmento_1_pct:null,pigmento_2_nombre:'',pigmento_2_pct:null},50);
+ assert.equal(result.components.length,8);
+ assert.equal(result.hasUnmeasuredPigments,false);
+});
+test('rejects invalid pigment percentages and unnamed dosages',()=>{
+ for(const pct of [-1,101,NaN,Infinity,''])assert.throws(()=>context.validateProductionMixture({...recipe,pigmento_1_nombre:'Negro',pigmento_1_pct:pct}),/entre 0 y 100/);
+ assert.throws(()=>context.validateProductionMixture({...recipe,pigmento_2_nombre:'',pigmento_2_pct:2}),/escribe el nombre/);
+});
