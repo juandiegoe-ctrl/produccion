@@ -2981,6 +2981,16 @@ hr{display:none!important}
 .order-drawer .drawer-action:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 @media(max-width:760px){.order-drawer .drawer-head{min-height:73px;gap:10px}.order-drawer .drawer-actions{gap:5px}}
 
+/* Distinct colors for the order sections. */
+.order-drawer .tabs .tab[data-tab="details"]{--tab-color:#1d4ed8;--tab-tint:#eff6ff;--tab-border:#bfdbfe}
+.order-drawer .tabs .tab[data-tab="items"]{--tab-color:#047857;--tab-tint:#ecfdf5;--tab-border:#a7f3d0}
+.order-drawer .tabs .tab[data-tab="dosageRecords"]{--tab-color:#7e22ce;--tab-tint:#faf5ff;--tab-border:#e9d5ff}
+.order-drawer .tabs .tab[data-tab="castingRecords"]{--tab-color:#b45309;--tab-tint:#fffbeb;--tab-border:#fde68a}
+.order-drawer .tabs .tab{background:var(--tab-tint);color:var(--tab-color);border-color:var(--tab-border)}
+.order-drawer .tabs .tab.active{background:var(--tab-color);color:#fff;border-color:var(--tab-color)}
+.order-drawer .tabs .tab:hover{filter:brightness(.96)}
+.order-drawer .tabs .tab:focus-visible{outline:2px solid var(--tab-color);outline-offset:3px}
+
 /* Keep print isolation after all responsive rules. */
 @media print{
   body > :not(#drawer),
