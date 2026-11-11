@@ -92,16 +92,20 @@ async function mountProductionMixtures(drawer,order){
         <div class="field"><label for="mixCoarseSandColor">Color de la arena gruesa</label><input id="mixCoarseSandColor" maxlength="120" required placeholder="Ej. Gris"></div>
       </div>
       <div class="mixture-materials">
-      ${MIXTURE_GRAINS.map(n=>`<fieldset class="mixture-grain"><legend>Grano ${n}</legend><div class="grid">
-        <div class="field"><label for="mixGrainColor_${n}">Color / referencia</label><input id="mixGrainColor_${n}" maxlength="120" placeholder="Ej. Blanco Carrara"></div>
-        <div class="field"><label for="mixGrainSize_${n}">Tamaño</label><input id="mixGrainSize_${n}" maxlength="120" placeholder="Ej. #2 o 3–6 mm"></div>
-        <div class="field"><label for="mixGrainPct_${n}">% sobre el peso del elemento</label><input id="mixGrainPct_${n}" type="number" min="0" max="100" step="0.0001" value="0" required></div>
+      <h4 class="mixture-group-title">Agregados</h4>
+      <div class="mixture-row-heading mixture-grain-heading" aria-hidden="true"><span>Color</span><span>Tamaño</span><span>%</span></div>
+      ${MIXTURE_GRAINS.map(n=>`<fieldset class="mixture-grain mixture-compact-grain"><legend class="mixture-visually-hidden">Grano ${n}</legend><div class="grid">
+        <div class="field"><label class="mixture-visually-hidden" for="mixGrainColor_${n}">Color / referencia</label><input id="mixGrainColor_${n}" maxlength="120" placeholder="Color"></div>
+        <div class="field"><label class="mixture-visually-hidden" for="mixGrainSize_${n}">Tamaño</label><input id="mixGrainSize_${n}" maxlength="120" placeholder="Nº2"></div>
+        <div class="field"><label class="mixture-visually-hidden" for="mixGrainPct_${n}">% sobre el peso del elemento</label><input id="mixGrainPct_${n}" type="number" min="0" max="100" step="0.0001" value="0" required></div>
       </div></fieldset>`).join('')}
       </div>
-      ${MIXTURE_PIGMENTS.map(n=>`<fieldset class="mixture-grain"><legend>Pigmento ${n}</legend><div class="grid">
-        <div class="field"><label for="mixPigmentName_${n}">Nombre / color</label><input id="mixPigmentName_${n}" maxlength="120" placeholder="Negro, Kolanil…"></div>
-        <div class="field"><label for="mixPigmentMode_${n}">Dosificación</label><select id="mixPigmentMode_${n}"><option value="percent">Porcentaje estimado</option><option value="eye">A ojo según color</option></select></div>
-        <div class="field" id="mixPigmentPctField_${n}"><label for="mixPigmentPct_${n}">% sobre el cemento</label><input id="mixPigmentPct_${n}" type="number" min="0" max="100" step="0.0001"></div>
+      <h4 class="mixture-group-title">Pigmentos</h4>
+      <div class="mixture-row-heading mixture-pigment-heading" aria-hidden="true"><span>Nombre / color</span><span>Dosificación</span><span>% cemento</span></div>
+      ${MIXTURE_PIGMENTS.map(n=>`<fieldset class="mixture-grain mixture-compact-pigment"><legend class="mixture-visually-hidden">Pigmento ${n}</legend><div class="grid">
+        <div class="field"><label class="mixture-visually-hidden" for="mixPigmentName_${n}">Nombre / color</label><input id="mixPigmentName_${n}" maxlength="120" placeholder="Negro, Kolanil…"></div>
+        <div class="field"><label class="mixture-visually-hidden" for="mixPigmentMode_${n}">Dosificación</label><select id="mixPigmentMode_${n}"><option value="percent">% estimado</option><option value="eye">A ojo</option></select></div>
+        <div class="field" id="mixPigmentPctField_${n}"><label class="mixture-visually-hidden" for="mixPigmentPct_${n}">% sobre el cemento</label><input id="mixPigmentPct_${n}" type="number" min="0" max="100" step="0.0001"></div>
       </div></fieldset>`).join('')}
       <p id="mixtureSaveStatus" role="status"></p>
       <div class="mixture-actions"><button class="btn primary" type="submit">Guardar mezcla</button><button class="btn secondary" type="button" id="cancelMixture">Cancelar</button></div>
@@ -152,8 +156,14 @@ async function mountProductionMixtures(drawer,order){
     q('#mixtureEditor').classList.remove('hidden');
     q('#mixtureName').focus();
   };
+  const recipeTags=recipe=>{
+    if(!recipe)return '';
+    const grains=MIXTURE_GRAINS.filter(n=>Number(recipe[`grano_${n}_pct`])>0).map(n=>`<span class="mixture-tag" title="Grano ${n}">${esc(recipe[`grano_${n}_color`])} ${esc(recipe[`grano_${n}_tamano`])} <b>${fmt(recipe[`grano_${n}_pct`])}%</b></span>`).join('');
+    const pigments=MIXTURE_PIGMENTS.filter(n=>recipe[`pigmento_${n}_nombre`]?.trim()).map(n=>`<span class="mixture-tag mixture-tag-pigment" title="Pigmento ${n}">${esc(recipe[`pigmento_${n}_nombre`])} <b>${recipe[`pigmento_${n}_pct`]==null?'A ojo':fmt(recipe[`pigmento_${n}_pct`])+'%'}</b></span>`).join('');
+    return grains||pigments?`<div class="mixture-tags">${grains}${pigments}</div>`:'';
+  };
   const renderLibrary=()=>{
-    q('#mixtureLibraryList').innerHTML=recipes.length?recipes.map(r=>`<article class="mixture-recipe"><div><strong>${esc(r.nombre)}</strong><small>Cemento ${r.cemento_tipo==='BLANCO'?'blanco':'gris'} · Arena fina ${esc(r.arena_fina_color)} · Arena gruesa ${esc(r.arena_gruesa_color)}${MIXTURE_GRAINS.filter(n=>Number(r[`grano_${n}_pct`])>0).map(n=>` · Grano ${n}: ${esc(r[`grano_${n}_color`])} / ${esc(r[`grano_${n}_tamano`])} (${fmt(r[`grano_${n}_pct`])}%)`).join('')}${MIXTURE_PIGMENTS.filter(n=>r[`pigmento_${n}_nombre`]?.trim()).map(n=>` · Pigmento ${n}: ${esc(r[`pigmento_${n}_nombre`])} (${r[`pigmento_${n}_pct`]==null?'A ojo según color':fmt(r[`pigmento_${n}_pct`])+'%'})`).join('')}</small></div><button type="button" class="btn secondary" data-edit-mixture="${esc(r.id)}">Editar</button></article>`).join(''):'<p class="empty">Sin mezclas.</p>';
+    q('#mixtureLibraryList').innerHTML=recipes.length?recipes.map(r=>`<article class="mixture-recipe"><div class="mixture-recipe-info"><strong>${esc(r.nombre)}</strong><small>Cemento ${r.cemento_tipo==='BLANCO'?'blanco':'gris'} · Arena fina ${esc(r.arena_fina_color)} · Arena gruesa ${esc(r.arena_gruesa_color)}</small>${recipeTags(r)}</div><button type="button" class="btn secondary" data-edit-mixture="${esc(r.id)}">Editar</button></article>`).join(''):'<p class="empty">Sin mezclas.</p>';
     q('#mixtureLibraryList').querySelectorAll('[data-edit-mixture]').forEach(button=>button.onclick=()=>openEditor(recipes.find(r=>r.id===button.dataset.editMixture)));
   };
   const renderDosage=async(host,item)=>{
@@ -244,11 +254,13 @@ async function mountProductionMixtures(drawer,order){
       itemCard.querySelector('.item-mixture')?.remove();
       const host=document.createElement('section');
       host.className='item-mixture';
-      host.innerHTML=`<div class="mixture-item-controls"><div class="field"><label>Mezcla del ítem<select aria-label="Mezcla para ${esc(item.codigo||'ítem')}" ${loading?'disabled':''}><option value="">Sin mezcla asignada</option>${recipes.map(r=>`<option value="${esc(r.id)}" ${item.mezcla_id===r.id?'selected':''}>${esc(r.nombre)}</option>`).join('')}</select></label></div><button type="button" class="btn secondary mixture-generate" ${loading?'disabled':''}>Generar dosificación</button></div><p class="mixture-assignment-status" role="status"></p><div class="item-mixture-result hidden" aria-live="polite"></div>`;
+      host.innerHTML=`<div class="mixture-item-controls"><div class="field"><label>Mezcla del ítem<select aria-label="Mezcla para ${esc(item.codigo||'ítem')}" ${loading?'disabled':''}><option value="">Sin mezcla asignada</option>${recipes.map(r=>`<option value="${esc(r.id)}" ${item.mezcla_id===r.id?'selected':''}>${esc(r.nombre)}</option>`).join('')}</select></label></div><button type="button" class="btn secondary mixture-generate" ${loading?'disabled':''}>Generar dosificación</button></div><div class="item-mixture-summary"></div><p class="mixture-assignment-status" role="status"></p><div class="item-mixture-result hidden" aria-live="polite"></div>`;
       itemCard.append(host);
       const select=host.querySelector('select');
       const generate=host.querySelector('.mixture-generate');
       const status=host.querySelector('.mixture-assignment-status');
+      const renderSummary=()=>{host.querySelector('.item-mixture-summary').innerHTML=recipeTags(recipes.find(r=>r.id===item.mezcla_id))};
+      renderSummary();
       select.onchange=async()=>{
         const previous=item.mezcla_id||'';
         const next=select.value||null;
@@ -260,6 +272,7 @@ async function mountProductionMixtures(drawer,order){
           if(error)throw error;
           if(!data || data.mezcla_id!==next)throw Error('No se pudo confirmar la asignación de la mezcla.');
           item.mezcla_id=data.mezcla_id;
+          renderSummary();
           status.textContent='Mezcla guardada.';
         }catch(error){select.value=previous;status.textContent=storageError(error);status.classList.add('mixture-error')}
         finally{select.disabled=false;generate.disabled=false}

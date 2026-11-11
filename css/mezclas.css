@@ -17,3 +17,26 @@
 .mixture-grain{margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:12px;min-width:0}
 .mixture-grain legend{font-size:13px;font-weight:700;padding:0 6px}
 #mixtureEditor .field.hidden{display:none!important}
+
+/* Compact material rows and recipe summaries. */
+.mixture-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+.mixture-group-title{font-size:12px;margin:16px 0 6px}
+.mixture-row-heading{display:grid;gap:8px;font-size:10px;color:var(--muted);margin-bottom:4px}
+.mixture-grain-heading,.mixture-compact-grain .grid{grid-template-columns:minmax(0,1fr) minmax(0,.8fr) 66px!important}
+.mixture-pigment-heading,.mixture-compact-pigment .grid{grid-template-columns:minmax(0,1fr) 110px 66px!important}
+.mixture-compact-grain,.mixture-compact-pigment{margin:5px 0;padding:0;border:0;border-radius:0}
+.mixture-compact-grain .grid,.mixture-compact-pigment .grid{gap:8px!important}
+#mixtureEditor .mixture-grain input,#mixtureEditor .mixture-grain select{min-height:36px!important;height:36px!important;padding:6px 8px!important;font-size:12px!important;border-radius:8px!important}
+.mixture-recipe-info{min-width:0}
+.mixture-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.mixture-tag{display:inline-flex;align-items:baseline;gap:4px;padding:4px 7px;border:1px solid #ddd6fe;border-radius:6px;background:#f5f3ff;color:#4c1d95;font-size:11px;line-height:1.3;overflow-wrap:anywhere;max-width:100%}
+.mixture-tag b{white-space:nowrap}
+.mixture-tag-pigment{border-color:#d1d5db;background:#f9fafb;color:#374151}
+#items .item-mixture{margin-top:10px;padding-top:10px}
+#items .mixture-item-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px}
+#items .mixture-item-controls .field{min-width:0}
+#items .mixture-item-controls label{gap:4px;font-size:10px}
+#items .mixture-item-controls select{min-height:36px!important;height:36px!important;font-size:12px!important;padding:5px 8px!important}
+#items .mixture-generate{width:auto;min-height:36px;padding:7px 9px;font-size:11px}
+.mixture-assignment-status:empty{display:none}
+@media(max-width:390px){.mixture-pigment-heading,.mixture-compact-pigment .grid{grid-template-columns:minmax(0,1fr) 96px 60px!important}.mixture-grain-heading,.mixture-compact-grain .grid{grid-template-columns:minmax(0,1fr) minmax(0,.8fr) 60px!important}}
