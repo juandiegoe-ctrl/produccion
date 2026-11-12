@@ -122,7 +122,7 @@ function openMixtureSidePanel(drawer,{title,content=null,trigger=document.active
   dialog.addEventListener('cancel',event=>{event.preventDefault();panel.close()});
   dialog.addEventListener('close',()=>panel.close(),{once:true});
   drawer._mixturePanel=panel;
-  drawer.append(dialog);
+  (drawer.classList.contains('hidden')?document.body:drawer).append(dialog);
   dialog.showModal();
   return panel;
 }

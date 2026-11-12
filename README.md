@@ -118,3 +118,23 @@ cantidad total. La dosificación y el cuadro de mezclas impreso omiten cualquier
 cemento al 0%. Las recetas anteriores mantienen el color que tenían, ahora al
 100%. Esquema: `db/cementos-mezcla.sql`, aplicado como
 `add_white_and_gray_cement_blend_percentages`.
+
+## Avances con confirmación
+
+El rol **PRODUCCION_LECTURA** solicita el siguiente avance desde la flecha junto
+al estado del ítem. El estado real se conserva hasta que un **ADMINISTRADOR**
+revise y confirme la solicitud en **Avances pendientes** o desde la propia ficha.
+Rechazar no cambia el ítem. Si el estado cambió o la orden se cerró, la solicitud
+se marca desactualizada y no se aplica. Cada ítem admite una sola solicitud
+pendiente; se conservan solicitante, revisor, fechas y comentario de revisión.
+
+El permiso de lectura del usuario no cambia: no obtiene acceso directo para
+modificar estados. La aprobación y el cambio de estado son una transacción y
+usan los disparadores existentes de historial y etapas. El usuario de consulta no solicita el cierre final del
+ítem. La cola se actualiza por
+Realtime y también incluye un botón Actualizar.
+
+SQL: `db/solicitudes-avance.sql` y `db/solicitudes-avance-revision.sql`, aplicados
+como `add_item_advance_requests_with_admin_confirmation` y
+`reject_already_reviewed_advance_requests`. Verificación transaccional con
+ambos roles y reversión de los datos de prueba: `tests/avances.integration.sql`.
