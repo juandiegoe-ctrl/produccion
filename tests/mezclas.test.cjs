@@ -93,3 +93,31 @@ test('batch records cannot use a recipe belonging to another order',()=>{
  assert.throws(()=>context.buildProductionDosageRecord(scoped,{id:'item-2'},'order-2',50,'2026-11-11','batch-1'),/otra orden/);
  assert.equal(context.buildProductionDosageRecord(scoped,{id:'item-1'},'order-1',50,'2026-11-11','batch-1').mezcla_id,'mix-1');
 });
+test('white and gray cement share the existing cement amount; pigments use both',()=>{
+ const mixed={...recipe,cemento_blanco_pct:70,cemento_gris_pct:30,pigmento_1_nombre:'Negro',pigmento_1_pct:2};
+ const result=context.calculateProductionMixture(mixed,50);
+ assert.ok(Math.abs(result.components.find(m=>m.label==='Cemento blanco').amount-10.85)<1e-10);
+ assert.ok(Math.abs(result.components.find(m=>m.label==='Cemento gris').amount-4.65)<1e-10);
+ assert.equal(result.components.find(m=>m.label==='Pigmento 1').amount,0.31);
+ assert.ok(Math.abs(result.totalKg-55.21)<1e-10);
+});
+test('single-color cement omits the zero-percent color from dosage',()=>{
+ for(const [white,gray,name] of [[100,0,'Blanco'],[0,100,'Gris']]){
+   const result=context.calculateProductionMixture({...recipe,cemento_blanco_pct:white,cemento_gris_pct:gray},100);
+   const cements=result.components.filter(m=>m.label.startsWith('Cemento'));
+   assert.equal(cements.length,1);assert.equal(cements[0].name,name);assert.equal(cements[0].amount,31);
+ }
+});
+test('cement percentages must be valid and total 100%',()=>{
+ for(const [white,gray] of [[50,30],[-1,101],[101,-1],[NaN,0],['',100]])assert.throws(()=>context.validateProductionMixture({...recipe,cemento_blanco_pct:white,cemento_gris_pct:gray}),/cemento|Cemento/);
+ const mix={...recipe,cemento_blanco_pct:33.3333,cemento_gris_pct:66.6667};
+ assert.equal(context.validateProductionMixture(mix),mix);
+});
+test('saved batches preserve both cement colors and quantities independently',()=>{
+ const mix={...recipe,cemento_blanco_pct:60,cemento_gris_pct:40};
+ const record=context.buildProductionDosageRecord(mix,{id:'i'},'o',100,'2026-11-11','r');
+ assert.equal(record.componentes['Cemento blanco'].cantidad,18.6);
+ assert.equal(record.componentes['Cemento gris'].cantidad,12.4);
+ mix.cemento_blanco_pct=100;
+ assert.equal(record.receta_snapshot.cemento_blanco_pct,60);
+});

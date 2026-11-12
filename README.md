@@ -110,3 +110,11 @@ también al crearla. Se guardan automáticamente al editar y se imprimen despué
 del cuadro de mezclas, conservando los saltos de línea y permitiendo varias
 páginas. Columna añadida mediante `db/observaciones-orden.sql`, aplicada como
 `add_general_production_order_observations`.
+
+El cemento se reparte entre **blanco (%)** y **gris (%)**, sumando 100%. El
+editor calcula automáticamente el porcentaje complementario. La cantidad total
+de cemento de la receta base se conserva y el pigmento se calcula sobre esa
+cantidad total. La dosificación y el cuadro de mezclas impreso omiten cualquier
+cemento al 0%. Las recetas anteriores mantienen el color que tenían, ahora al
+100%. Esquema: `db/cementos-mezcla.sql`, aplicado como
+`add_white_and_gray_cement_blend_percentages`.

@@ -4349,7 +4349,7 @@ async function openOrder(id){
       </table>`;
 
     const recipeParameters=recipe=>{
-      const parts=[`Cemento ${recipe.cemento_tipo==='BLANCO'?'blanco':'gris'}`,`Arena fina ${recipe.arena_fina_color}`,`Arena gruesa ${recipe.arena_gruesa_color}`];
+      const parts=[...productionMixtureCements(recipe).filter(c=>c.percent>0).map(c=>`Cemento ${c.type==='BLANCO'?'blanco':'gris'} ${c.percent.toLocaleString('es-CO')}%`),`Arena fina ${recipe.arena_fina_color}`,`Arena gruesa ${recipe.arena_gruesa_color}`];
       MIXTURE_GRAINS.forEach(n=>{
         if(Number(recipe[`grano_${n}_pct`])>0)parts.push(`Grano ${recipe[`grano_${n}_color`]} ${recipe[`grano_${n}_tamano`]} ${Number(recipe[`grano_${n}_pct`]).toLocaleString('es-CO')}%`);
       });

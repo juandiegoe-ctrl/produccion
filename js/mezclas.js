@@ -2,9 +2,19 @@
 const MIXTURE_GRAINS = [1,2,3];
 const MIXTURE_PIGMENTS = [1,2];
 
+function productionMixtureCements(recipe){
+  return [
+    {type:'BLANCO',percent:Number(recipe.cemento_blanco_pct??(recipe.cemento_tipo==='BLANCO'?100:0))},
+    {type:'GRIS',percent:Number(recipe.cemento_gris_pct??(recipe.cemento_tipo==='GRIS'?100:0))}
+  ];
+}
+
 function validateProductionMixture(recipe){
   if(!recipe.nombre?.trim() || recipe.nombre.trim().length>120)throw Error('Escribe un nombre de mezcla de hasta 120 caracteres.');
-  if(!['BLANCO','GRIS'].includes(recipe.cemento_tipo))throw Error('Selecciona cemento blanco o gris.');
+  if(recipe.cemento_blanco_pct==null && recipe.cemento_gris_pct==null && !['BLANCO','GRIS'].includes(recipe.cemento_tipo))throw Error('Selecciona cemento blanco o gris.');
+  const cements=productionMixtureCements(recipe);
+  if(recipe.cemento_blanco_pct==='' || recipe.cemento_gris_pct==='' || cements.some(c=>!Number.isFinite(c.percent)||c.percent<0||c.percent>100))throw Error('Los porcentajes de cemento deben estar entre 0 y 100.');
+  if(Math.abs(cements.reduce((sum,c)=>sum+c.percent,0)-100)>0.000001)throw Error('Cemento blanco y gris deben sumar 100%.');
   for(const key of ['arena_fina_color','arena_gruesa_color']){
     if(!recipe[key]?.trim() || recipe[key].trim().length>120)throw Error('Escribe el color de la arena fina y de la arena gruesa (máximo 120 caracteres).');
   }
@@ -29,13 +39,21 @@ function calculateProductionMixture(recipe,weight){
   const kg=Number(weight);
   if(!Number.isFinite(kg)||kg<=0)throw Error('El ítem necesita un peso mayor que cero para generar la dosificación. Edita el peso del ítem.');
   const factor=kg/100;
-  const references={Cemento:recipe.cemento_tipo==='BLANCO'?'Blanco':'Gris','Arena fina':recipe.arena_fina_color,'Arena gruesa':recipe.arena_gruesa_color};
-  const components=DOSAGE_BASE.map(m=>({label:m.name,name:references[m.name]||'',amount:m.amount*factor,unit:m.unit,basis:`${m.amount} ${m.unit} por cada 100 kg de elemento`}));
+  const cements=productionMixtureCements(recipe).filter(c=>c.percent>0);
+  const references={'Arena fina':recipe.arena_fina_color,'Arena gruesa':recipe.arena_gruesa_color};
+  const cementKg=DOSAGE_BASE.find(m=>m.name==='Cemento').amount*factor;
+  const components=DOSAGE_BASE.flatMap(m=>{
+    if(m.name==='Cemento')return cements.map(c=>({
+      label:cements.length===1?'Cemento':`Cemento ${c.type==='BLANCO'?'blanco':'gris'}`,
+      name:cements.length===1?(c.type==='BLANCO'?'Blanco':'Gris'):'',
+      amount:cementKg*c.percent/100,unit:'kg',basis:`${c.percent}% del cemento`
+    }));
+    return [{label:m.name,name:references[m.name]||'',amount:m.amount*factor,unit:m.unit,basis:`${m.amount} ${m.unit} por cada 100 kg de elemento`}];
+  });
   MIXTURE_GRAINS.forEach(n=>{
     const percent=Number(recipe[`grano_${n}_pct`]);
     if(percent>0)components.push({label:`Grano ${n}`,name:`${recipe[`grano_${n}_color`]} · ${recipe[`grano_${n}_tamano`]}`,amount:kg*percent/100,unit:'kg',basis:`${percent.toLocaleString('es-CO')}% del peso del elemento · adicional`});
   });
-  const cementKg=components.find(m=>m.label==='Cemento').amount;
   MIXTURE_PIGMENTS.forEach(n=>{
     const name=recipe[`pigmento_${n}_nombre`]?.trim();
     if(!name)return;
@@ -127,8 +145,11 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
     <form id="mixtureEditor" class="hidden mixture-editor">
       <h3 id="mixtureEditorTitle">Crear mezcla</h3>
       <div class="grid">
-        <div class="field"><label for="mixtureName">Nombre de la mezcla</label><input id="mixtureName" required maxlength="120" placeholder="Ej. Mezcla pedestal"></div>
-        <div class="field"><label for="mixtureCementType">Tipo de cemento</label><select id="mixtureCementType"><option value="BLANCO">Blanco</option><option value="GRIS">Gris</option></select></div>
+        <div class="field full"><label for="mixtureName">Nombre de la mezcla</label><input id="mixtureName" required maxlength="120" placeholder="Ej. Mezcla pedestal"></div>
+      </div>
+      <div class="mixture-cement-grid">
+        <div class="field"><label for="mixCementWhitePct">Cemento blanco (%)</label><input id="mixCementWhitePct" type="number" min="0" max="100" step="0.0001" required value="100"></div>
+        <div class="field"><label for="mixCementGrayPct">Cemento gris (%)</label><input id="mixCementGrayPct" type="number" min="0" max="100" step="0.0001" required value="0"></div>
       </div>
       <div class="grid" style="margin-top:12px">
         <div class="field"><label for="mixFineSandColor">Color de la arena fina</label><input id="mixFineSandColor" maxlength="120" required placeholder="Ej. Blanca"></div>
@@ -155,9 +176,17 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
     </form>`;
   const editor=panel.querySelector('#mixtureEditor');
   const q=selector=>panel.querySelector(selector)||(editor.matches(selector)?editor:editor.querySelector(selector));
+  const complementCement=(source,target)=>{
+    const raw=q(source).value;
+    const value=Number(raw);
+    if(raw!=='' && Number.isFinite(value) && value>=0 && value<=100)q(target).value=Number((100-value).toFixed(4));
+  };
+  q('#mixCementWhitePct').oninput=()=>complementCement('#mixCementWhitePct','#mixCementGrayPct');
+  q('#mixCementGrayPct').oninput=()=>complementCement('#mixCementGrayPct','#mixCementWhitePct');
   const setStatus=(message,error=false)=>{q('#mixtureLibraryStatus').textContent=message;q('#mixtureLibraryStatus').classList.toggle('mixture-error',error)};
   const getRecipe=()=>{
-    const recipe={nombre:q('#mixtureName').value.trim(),cemento_tipo:q('#mixtureCementType').value,arena_fina_color:q('#mixFineSandColor').value.trim(),arena_gruesa_color:q('#mixCoarseSandColor').value.trim()};
+    const white=Number(q('#mixCementWhitePct').value),gray=Number(q('#mixCementGrayPct').value);
+    const recipe={nombre:q('#mixtureName').value.trim(),cemento_tipo:white>0?'BLANCO':'GRIS',cemento_blanco_pct:white,cemento_gris_pct:gray,arena_fina_color:q('#mixFineSandColor').value.trim(),arena_gruesa_color:q('#mixCoarseSandColor').value.trim()};
     MIXTURE_GRAINS.forEach(n=>{recipe[`grano_${n}_color`]=q('#mixGrainColor_'+n).value.trim();recipe[`grano_${n}_tamano`]=q('#mixGrainSize_'+n).value.trim();recipe[`grano_${n}_pct`]=Number(q('#mixGrainPct_'+n).value)});
     MIXTURE_PIGMENTS.forEach(n=>{
       recipe[`pigmento_${n}_nombre`]=q('#mixPigmentName_'+n).value.trim();
@@ -179,7 +208,9 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
     q('#mixtureEditor').reset();
     q('#mixtureEditorTitle').textContent=recipe?'Editar mezcla':'Crear mezcla';
     q('#mixtureName').value=recipe?.nombre||'';
-    q('#mixtureCementType').value=recipe?.cemento_tipo||'BLANCO';
+    const cements=productionMixtureCements(recipe||{cemento_tipo:'BLANCO'});
+    q('#mixCementWhitePct').value=cements[0].percent;
+    q('#mixCementGrayPct').value=cements[1].percent;
     q('#mixFineSandColor').value=recipe?.arena_fina_color||'';
     q('#mixCoarseSandColor').value=recipe?.arena_gruesa_color||'';
     MIXTURE_GRAINS.forEach(n=>{
@@ -207,7 +238,7 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
     return grains||pigments?`<div class="mixture-tags">${grains}${pigments}</div>`:'';
   };
   const renderLibrary=()=>{
-    q('#mixtureLibraryList').innerHTML=recipes.length?recipes.map(r=>`<article class="mixture-recipe"><div class="mixture-recipe-info"><strong>${esc(r.nombre)}</strong><small>Cemento ${r.cemento_tipo==='BLANCO'?'blanco':'gris'} · Arena fina ${esc(r.arena_fina_color)} · Arena gruesa ${esc(r.arena_gruesa_color)}</small>${recipeTags(r)}</div><button type="button" class="btn secondary" data-edit-mixture="${esc(r.id)}">Editar</button></article>`).join(''):'<p class="empty">Sin mezclas.</p>';
+    q('#mixtureLibraryList').innerHTML=recipes.length?recipes.map(r=>`<article class="mixture-recipe"><div class="mixture-recipe-info"><strong>${esc(r.nombre)}</strong><small>${productionMixtureCements(r).filter(c=>c.percent>0).map(c=>`Cemento ${c.type==='BLANCO'?'blanco':'gris'} ${fmt(c.percent)}%`).join(' · ')} · Arena fina ${esc(r.arena_fina_color)} · Arena gruesa ${esc(r.arena_gruesa_color)}</small>${recipeTags(r)}</div><button type="button" class="btn secondary" data-edit-mixture="${esc(r.id)}">Editar</button></article>`).join(''):'<p class="empty">Sin mezclas.</p>';
     q('#mixtureLibraryList').querySelectorAll('[data-edit-mixture]').forEach(button=>button.onclick=()=>openEditor(recipes.find(r=>r.id===button.dataset.editMixture)));
   };
   const renderDosage=async(host,item)=>{
