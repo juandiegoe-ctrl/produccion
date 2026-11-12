@@ -104,3 +104,9 @@ foráneas impiden asignar una mezcla a ítems o registros de otra orden. La mezc
 existente se vinculó a la única orden que la utilizaba, conservando asignaciones
 y registros. Cambio de base de datos: `db/mezclas-por-orden.sql`, aplicado como
 `scope_production_mixtures_to_their_order`.
+
+La información general de cada orden incluye **Observaciones**, disponibles
+también al crearla. Se guardan automáticamente al editar y se imprimen después
+del cuadro de mezclas, conservando los saltos de línea y permitiendo varias
+páginas. Columna añadida mediante `db/observaciones-orden.sql`, aplicada como
+`add_general_production_order_observations`.

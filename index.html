@@ -3443,6 +3443,7 @@ async function openNew(){
         <div class="field full"><label>Producto</label><input name="producto" required></div>
         <div class="field"><label>Fecha inicio</label><input name="fechaInicio" type="date"></div>
         <div class="field"><label>Fecha entrega</label><input name="fechaEntrega" type="date"></div>
+        <div class="field full"><label>Observaciones<textarea name="observaciones" rows="4"></textarea></label></div>
       </div></div>
       <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:14px">
         <button type="button" class="btn secondary cancel">Cancelar</button>
@@ -3462,7 +3463,8 @@ async function openNew(){
       cliente:values.cliente.trim(),
       producto:values.producto.trim(),
       fecha_inicio:values.fechaInicio||null,
-      fecha_entrega:values.fechaEntrega||null
+      fecha_entrega:values.fechaEntrega||null,
+      observaciones:values.observaciones||null
     });
     if(error){
       alert(error.message);
@@ -3533,6 +3535,9 @@ async function openOrder(id){
         </div>
         <div class="field"><label>Fecha de cierre</label>
           <input value="${order.fecha_cierre?new Date(order.fecha_cierre).toLocaleString('es-CO'):'—'}" disabled>
+        </div>
+        <div class="field full"><label for="orderObservations">Observaciones</label>
+          <textarea id="orderObservations" data-field="observaciones" rows="4">${esc(order.observaciones||'')}</textarea>
         </div>
       </div></div>
       <div id="saveState" class="save-state autosave-state">✓ Todos los cambios se guardan automáticamente.</div>
@@ -3760,7 +3765,7 @@ async function openOrder(id){
         </section>
         <section class="print-notes">
           <h3>OBSERVACIONES DE PRODUCCIÓN</h3>
-          <div class="notes-box"></div>
+          <div id="documentObservations" class="notes-box"></div>
         </section>
         <div class="no-print" style="margin-top:16px">
           <button id="printOrderDocument" class="btn primary" onclick="window.print()">Imprimir / Guardar PDF</button>
@@ -4249,10 +4254,18 @@ async function openOrder(id){
   drawer._reloadDosageRecords=loadOrderDosageRecords;
   loadOrderDosageRecords();
 
+  const renderOrderObservations=()=>{
+    const text=drawer.querySelector('[data-field="observaciones"]')?.value??order.observaciones??'';
+    const notes=drawer.querySelector('#documentObservations');
+    notes.textContent=text;
+    notes.classList.toggle('has-observations',Boolean(text.trim()));
+    notes.closest('.print-notes').classList.toggle('has-observations',Boolean(text.trim()));
+  };
   let documentRecipes=[];
   let documentRecipesLoading=true;
   let documentRecipesError=null;
   const renderDocument=()=>{
+    renderOrderObservations();
     const mixtureById=new Map(documentRecipes.map(recipe=>[recipe.id,recipe]));
     const usedMixtureIds=[...new Set(order.items.map(item=>item.mezcla_id).filter(Boolean))];
     const missing=usedMixtureIds.some(id=>!mixtureById.has(id));
@@ -4701,6 +4714,7 @@ async function openOrder(id){
       producto:value('producto'),
       fecha_inicio:value('fecha_inicio'),
       fecha_entrega:value('fecha_entrega'),
+      observaciones:value('observaciones'),
       cerrada:nextClosed,
       fecha_cierre:nextClosed?(order.fecha_cierre||new Date().toISOString()):null
     };
@@ -4738,6 +4752,7 @@ async function openOrder(id){
   };
 
   const scheduleOrderAutosave=()=>{
+    renderOrderObservations();
     clearTimeout(orderSaveTimer);
     drawer.querySelector('#saveState').textContent='Cambios pendientes...';
     orderSaveTimer=setTimeout(saveOrderAutomatically,650);
