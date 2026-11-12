@@ -93,6 +93,10 @@ th{position:sticky;top:0;background:#ecece7;color:#62645e;text-transform:upperca
 .production-table{width:100%;min-width:0;border-collapse:collapse;margin-top:10px}
 .production-table th,.production-table td{position:static;border:1px solid #aaa;padding:6px 7px;font-size:10px;vertical-align:top}
 .production-table th{background:#eee;color:#000}
+.production-table .production-check-cell{text-align:center!important;vertical-align:middle!important}
+.production-table .production-check-heading{text-align:center!important;white-space:nowrap;letter-spacing:0!important;font-size:8px!important;padding-left:2px!important;padding-right:2px!important}
+.production-table th:nth-child(4){font-size:8px!important;letter-spacing:0!important}
+.production-check-box{display:inline-block;width:4mm;height:4mm;border:1px solid #333;background:#fff;vertical-align:middle}
 .print-notes{margin-top:18px}
 .print-notes h3{margin:0 0 8px;font-size:13px}
 .notes-box{height:135px;border:1px solid #999;background:repeating-linear-gradient(to bottom,#fff 0,#fff 27px,#d6d6d6 28px)}
@@ -198,17 +202,21 @@ th{position:sticky;top:0;background:#ecece7;color:#62645e;text-transform:upperca
   .production-table th:nth-child(1),
   .production-table td:nth-child(1){width:9%}
   .production-table th:nth-child(2),
-  .production-table td:nth-child(2){width:18%}
+  .production-table td:nth-child(2){width:15%}
   .production-table th:nth-child(3),
-  .production-table td:nth-child(3){width:18%}
+  .production-table td:nth-child(3){width:15%}
   .production-table th:nth-child(4),
-  .production-table td:nth-child(4){width:10%}
+  .production-table td:nth-child(4){width:8%}
   .production-table th:nth-child(5),
-  .production-table td:nth-child(5){width:14%}
+  .production-table td:nth-child(5){width:11%}
   .production-table th:nth-child(6),
-  .production-table td:nth-child(6){width:11%}
+  .production-table td:nth-child(6){width:8%}
   .production-table th:nth-child(7),
-  .production-table td:nth-child(7){width:20%}
+  .production-table td:nth-child(7){width:18%}
+  .production-table th:nth-child(8),
+  .production-table td:nth-child(8){width:8%}
+  .production-table th:nth-child(9),
+  .production-table td:nth-child(9){width:8%}
 
   .qr-block img{
     width:76px!important;
@@ -281,12 +289,14 @@ th{position:sticky;top:0;background:#ecece7;color:#62645e;text-transform:upperca
 .print-items-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
 .print-items-heading strong{font-size:11px}
 .production-table th:nth-child(1){width:9%}
-.production-table th:nth-child(2){width:18%}
-.production-table th:nth-child(3){width:18%}
-.production-table th:nth-child(4){width:10%}
-.production-table th:nth-child(5){width:14%}
-.production-table th:nth-child(6){width:11%}
-.production-table th:nth-child(7){width:20%}
+.production-table th:nth-child(2){width:15%}
+.production-table th:nth-child(3){width:15%}
+.production-table th:nth-child(4){width:8%}
+.production-table th:nth-child(5){width:11%}
+.production-table th:nth-child(6){width:8%}
+.production-table th:nth-child(7){width:18%}
+.production-table th:nth-child(8){width:8%}
+.production-table th:nth-child(9){width:8%}
 @media print{
   .print-items-heading{display:flex!important}
   .production-table{table-layout:fixed;width:100%}
@@ -4281,7 +4291,9 @@ async function openOrder(id){
       <td>${esc(item.dimensiones||'—')}</td>
       <td>${esc(item.colores||'—')}</td>
       <td>${esc(item.comentarios||'—')}</td>
-    </tr>`).join(''):`<tr><td colspan="7">Sin ítems registrados.</td></tr>`;
+      <td class="production-check-cell"><span class="production-check-box" aria-hidden="true"></span></td>
+      <td class="production-check-cell"><span class="production-check-box" aria-hidden="true"></span></td>
+    </tr>`).join(''):`<tr><td colspan="9">Sin ítems registrados.</td></tr>`;
 
     drawer.querySelector('#documentItems').innerHTML=`
       ${(()=>{
@@ -4306,6 +4318,7 @@ async function openOrder(id){
         <thead><tr>
           <th>Código</th><th>Producto</th><th>Mezcla</th><th>Peso estimado</th>
           <th>Dimensiones</th><th>Colores</th><th>Comentarios</th>
+          <th class="production-check-heading">MEZCLADA</th><th class="production-check-heading">PULIDA</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
