@@ -3049,6 +3049,21 @@ hr{display:none!important}
   }
 }
 
+
+.daily-choice{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:6px}
+#dailyPlan{width:min(1100px,95vw);max-height:90vh;border:1px solid #ccc;border-radius:14px;padding:24px;overflow:auto}
+#dailyPlan::backdrop{background:#0008}
+.daily-toolbar{display:flex;justify-content:flex-end;gap:8px}
+#dailyPlan table{width:100%;border-collapse:collapse;font-size:13px}
+#dailyPlan th,#dailyPlan td{text-align:left;padding:9px;border:1px solid #ccc;overflow-wrap:anywhere}
+#dailyPlan tr{break-inside:avoid}
+@media print{
+  body.printing-daily-plan > :not(#dailyPlan){display:none!important}
+  body.printing-daily-plan > #dailyPlan{display:block!important;position:static!important;width:100%!important;max-width:none!important;max-height:none!important;height:auto!important;overflow:visible!important;border:0!important;margin:0!important;padding:0!important}
+  #dailyPlan::backdrop{display:none!important}
+  #dailyPlan .no-print{display:none!important}
+  #dailyPlan thead{display:table-header-group}
+}
 </style>
 <link rel="stylesheet" href="css/mezclas.css">
 <link rel="stylesheet" href="css/avances.css">
@@ -3069,7 +3084,7 @@ hr{display:none!important}
 <div class="app">
   <aside class="sidebar">
     <div class="logo"><img src="data:image/png;base64,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" alt="Estona"></div>
-    <div class="nav"><button id="ordersNav" class="active">Órdenes de producción</button><button id="manufactureNav">Por fabricar</button><button id="dashboardNav">Dashboard por etapas</button><button id="advancesNav" class="hidden">Avances pendientes</button></div>
+    <div class="nav"><button id="ordersNav" class="active">Órdenes de producción</button><button id="manufactureNav">Por fabricar</button><button id="dashboardNav">Dashboard por etapas</button><button id="dailyPlanNav">Mostrar actividades del día</button><button id="advancesNav" class="hidden">Avances pendientes</button></div>
     <div class="user"><strong>JUANDIEGO</strong><small>Administrador</small><button id="logoutButton" class="logout">Cerrar sesión</button></div>
   </aside>
   <main>
@@ -3221,6 +3236,52 @@ const $=selector=>document.querySelector(selector);
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
 }[char]));
+
+// A daily selection is local to this browser and never updates production records.
+const DAILY_PLAN_STAGES={MOLDE:'Armar molde',FUNDIR:'Fundir',PULIR:'Pulir',ALISTAR:'Alistar'};
+function dailyPlanKey(){return 'estona-produccion-dia:'+localDateKey();}
+function dailyPlanIds(){
+  try{const ids=JSON.parse(localStorage.getItem(dailyPlanKey())||'[]');return Array.isArray(ids)?ids.filter(id=>typeof id==='string'):[];}
+  catch{return [];}
+}
+function setDailyPlanItem(id,selected){
+  const ids=new Set(dailyPlanIds());
+  selected?ids.add(String(id)):ids.delete(String(id));
+  localStorage.setItem(dailyPlanKey(),JSON.stringify([...ids]));
+}
+function dailyPlanRows(){
+  const ids=new Set(dailyPlanIds());
+  return orders.flatMap(order=>(order.items||[])
+    .filter(item=>ids.has(String(item.id))&&DAILY_PLAN_STAGES[item.estado])
+    .map(item=>({order,item})));
+}
+function showDailyPlan(){
+  let dialog=document.querySelector('#dailyPlan');
+  if(!dialog){dialog=document.createElement('dialog');dialog.id='dailyPlan';document.body.append(dialog);}
+  const rows=dailyPlanRows();
+  dialog.innerHTML=`<div class="daily-toolbar no-print"><button id="closeDailyPlan" class="btn secondary">Cerrar</button><button id="printDailyPlan" class="btn primary" ${rows.length?'':'disabled'}>Imprimir / Guardar PDF</button></div>
+    <h1>Producción del día</h1><p>${esc(new Date().toLocaleDateString('es-CO'))} · ${rows.length} ítems para intervenir</p>
+    <p class="no-print">Selección de hoy guardada solo en este navegador. Marca la casilla con el icono de calendario en los ítems de cada orden. Los entregados y cerrados quedan fuera del listado.</p>
+    ${Object.entries(DAILY_PLAN_STAGES).map(([stage,label])=>{
+      const group=rows.filter(row=>row.item.estado===stage);
+      if(!group.length)return '';
+      return `<section class="daily-stage"><h2>${label} · ${group.length}</h2><table><thead><tr><th>OP / Cliente</th><th>Ítem / Producto</th><th>Dimensiones / Color</th><th>Peso</th><th>Comentarios</th><th class="no-print">Selección</th></tr></thead><tbody>${group.map(({order,item})=>`<tr><td>${esc(order.numero_op)}<br>${esc(order.cliente)}</td><td>${esc(item.codigo)}<br>${esc(item.catalogo_productos?.nombre||item.descripcion)}</td><td>${esc(item.dimensiones||'—')}<br>${esc(item.colores||'—')}</td><td>${Number(item.peso_kg||0).toLocaleString('es-CO')} kg</td><td>${esc(item.comentarios||'—')}</td><td class="no-print"><button data-daily-remove="${esc(item.id)}">Quitar</button></td></tr>`).join('')}</tbody></table></section>`;
+    }).join('')||'<p>No hay ítems seleccionados para intervenir hoy.</p>'}`;
+  dialog.querySelector('#closeDailyPlan').onclick=()=>dialog.close();
+  dialog.querySelector('#printDailyPlan').onclick=()=>{
+    document.body.classList.add('printing-daily-plan');
+    try{window.print();}finally{document.body.classList.remove('printing-daily-plan');}
+  };
+  dialog.querySelectorAll('[data-daily-remove]').forEach(button=>button.onclick=()=>{
+    try{setDailyPlanItem(button.dataset.dailyRemove,false);}
+    catch{alert('No se pudo guardar la selección.');return;}
+    document.querySelectorAll('[data-daily-item]').forEach(input=>{
+      if(input.dataset.dailyItem===button.dataset.dailyRemove)input.checked=false;
+    });
+    showDailyPlan();
+  });
+  if(!dialog.open)dialog.showModal();
+}
 
 const referencePublicUrl=path=>{
   if(!path)return '';
@@ -4442,6 +4503,7 @@ async function openOrder(id){
       <div class="item-head">
         <div class="item-identity">
           <div class="item-code">${esc(item.codigo)}</div>
+          <label class="daily-choice" title="Incluir en las actividades del día"><input type="checkbox" aria-label="Incluir en las actividades del día" data-daily-item="${esc(item.id)}" ${dailyPlanIds().includes(String(item.id))?'checked':''}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2"/></svg></label>
           <strong class="item-name">${esc(item.catalogo_productos?.nombre||item.descripcion)}</strong>
         </div>
         <div class="item-actions">
@@ -4486,6 +4548,12 @@ async function openOrder(id){
       ${item.comentarios?`<div class="item-comments-compact"><small>Comentarios</small><span>${esc(item.comentarios)}</span></div>`:''}
     </article>`).join(''):`<div class="empty">Todavía no hay ítems.</div>`;
 
+    list.querySelectorAll('[data-daily-item]').forEach(input=>{
+      input.onchange=()=>{
+        try{setDailyPlanItem(input.dataset.dailyItem,input.checked);}
+        catch(error){input.checked=!input.checked;alert('No se pudo guardar la selección en este navegador.');}
+      };
+    });
     drawer._mixtures?.renderItems();
 
     list.querySelectorAll('[data-state]').forEach(select=>{
@@ -5892,6 +5960,7 @@ async function init(){
     $('#closedFilter').onchange=renderAll;
     $('#stageSearch').oninput=renderStageDashboard;
     $('#stageClosedFilter').onchange=renderStageDashboard;
+    $('#dailyPlanNav').onclick=showDailyPlan;
     $('#ordersNav').onclick=showOrdersView;
     $('#dashboardNav').onclick=showDashboardView;
     $('#manufactureNav').onclick=showManufactureView;
