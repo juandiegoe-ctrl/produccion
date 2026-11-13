@@ -3050,6 +3050,9 @@ hr{display:none!important}
 }
 
 
+.order-items-filter{display:flex;flex-direction:column;gap:5px;font-size:12px;margin-left:auto}
+.order-items-filter select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
+@media(max-width:760px){.order-items-filter{margin-left:0;width:100%}}
 .daily-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .daily-date{white-space:nowrap;font-size:18px;letter-spacing:.04em}
 .daily-choice{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:6px}
@@ -3662,6 +3665,24 @@ async function openNew(){
   };
 }
 
+function applyOrderItemsFilter(drawer,order){
+  const filter=drawer.querySelector('#orderItemsStateFilter');
+  const list=drawer.querySelector('#itemsList');
+  if(!filter||!list)return;
+  const byId=new Map((order.items||[]).map(item=>[String(item.id),item]));
+  let visible=0;
+  list.querySelectorAll('.item-card').forEach(card=>{
+    const item=byId.get(card.querySelector('[data-edit]')?.dataset.edit);
+    const show=filter.value==='all'||item?.estado===filter.value;
+    card.classList.toggle('hidden',!show);
+    if(show)visible++;
+  });
+  let empty=list.querySelector('.order-items-filter-empty');
+  if(!empty){empty=document.createElement('div');empty.className='empty order-items-filter-empty';empty.setAttribute('role','status');list.append(empty);}
+  empty.textContent='No hay ítems en este estado.';
+  empty.classList.toggle('hidden',visible>0||!order.items.length);
+}
+
 async function openOrder(id){
   try{
     await loadCatalog();
@@ -3735,6 +3756,12 @@ async function openOrder(id){
       <div class="card">
         <div class="items-heading">
           <div><h3>Ítems de la orden</h3></div>
+          <label class="order-items-filter">Mostrar por estado
+            <select id="orderItemsStateFilter">
+              <option value="all" selected>Todos</option>
+              ${ITEM_STATES.map(state=>`<option value="${state}">${({MOLDE:'Por armar molde',FUNDIR:'Por fundir',PULIR:'Por pulir',ALISTAR:'Por alistar',ENTREGADO:'Entregados',CERRADO:'Cerrados'})[state]}</option>`).join('')}
+            </select>
+          </label>
           <button id="showItemForm" class="btn primary">+ Agregar ítem</button>
         </div>
 
@@ -4702,6 +4729,7 @@ async function openOrder(id){
         }
 
         select.disabled=false;
+        applyOrderItemsFilter(drawer,order);
 
         // Sin bloquear al usuario, sincronizamos las listas en segundo plano.
         loadOrders({openRequested:false}).catch(console.error);
@@ -4899,7 +4927,9 @@ async function openOrder(id){
       };
     });
     drawer._advances?.renderItems();
+    applyOrderItemsFilter(drawer,order);
   };
+  drawer.querySelector('#orderItemsStateFilter').onchange=()=>applyOrderItemsFilter(drawer,order);
 
   let orderSaveTimer=null;
   let orderSaveSequence=0;

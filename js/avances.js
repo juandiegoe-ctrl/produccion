@@ -164,6 +164,7 @@ async function mountProductionItemAdvances(drawer,order){
     (data||[]).forEach(update=>{const item=order.items.find(i=>i.id===update.id);if(item)Object.assign(item,update)});
     reconcileDailyPending();
     renderItems();
+    applyOrderItemsFilter(drawer,order);
   };
   drawer._advances={renderItems,refresh};
   renderItems();
