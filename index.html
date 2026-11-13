@@ -3137,6 +3137,7 @@ hr{display:none!important}
 </style>
 <link rel="stylesheet" href="css/mezclas.css">
 <link rel="stylesheet" href="css/avances.css">
+<link rel="stylesheet" href="css/modelos-3d.css">
 </head>
 <body>
 <div id="loginScreen" class="login-screen">
@@ -3275,6 +3276,7 @@ hr{display:none!important}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/mezclas.js"></script>
 <script src="js/avances.js"></script>
+<script src="js/modelos-3d.js"></script>
 <script>
 
 const SUPABASE_URL='https://ujyhzcomdzhppggteqnv.supabase.co';
@@ -4682,6 +4684,7 @@ async function openOrder(id){
           <strong class="item-name">${esc(item.catalogo_productos?.nombre||item.descripcion)}</strong>
         </div>
         <div class="item-actions">
+          <button type="button" class="item-model-button" data-model-3d="${esc(item.id)}" title="Subir o ver modelo 3D" aria-label="Subir o ver modelo 3D">3D</button>
           <button type="button" class="edit" data-edit="${esc(item.id)}" title="Editar ítem" aria-label="Editar ítem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5M4 20l4-1L21 6a2.1 2.1 0 0 0-3-3L5 16l-1 4Z"/></svg></button>
           <button type="button" class="duplicate" data-duplicate="${esc(item.id)}" title="Duplicar ítem" aria-label="Duplicar ítem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4"/></svg></button>
           <button type="button" class="delete" data-delete="${esc(item.id)}" title="Eliminar ítem" aria-label="Eliminar ítem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></button>
@@ -4723,6 +4726,12 @@ async function openOrder(id){
       ${item.comentarios?`<div class="item-comments-compact"><small>Comentarios</small><span>${esc(item.comentarios)}</span></div>`:''}
     </article>`).join(''):`<div class="empty">Todavía no hay ítems.</div>`;
 
+    list.querySelectorAll('[data-model-3d]').forEach(button=>{
+      button.onclick=()=>{
+        const item=order.items.find(candidate=>String(candidate.id)===button.getAttribute('data-model-3d'));
+        if(item)openItemModel3D(order,item);
+      };
+    });
     list.querySelectorAll('[data-daily-item]').forEach(input=>{
       input.onchange=()=>{
         try{setDailyPlanItem(input.dataset.dailyItem,input.checked);}

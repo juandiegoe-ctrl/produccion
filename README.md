@@ -138,3 +138,19 @@ SQL: `db/solicitudes-avance.sql` y `db/solicitudes-avance-revision.sql`, aplicad
 como `add_item_advance_requests_with_admin_confirmation` y
 `reject_already_reviewed_advance_requests`. Verificación transaccional con
 ambos roles y reversión de los datos de prueba: `tests/avances.integration.sql`.
+
+## Modelos 3D opcionales por ítem
+
+El botón **3D** abre un visor para subir o consultar un archivo GLB versión 2
+(máximo 25 MB). El visor permite girar y acercar el modelo. La librería
+`@google/model-viewer` 4.1.0 se carga desde `cdn.jsdelivr.net` únicamente al abrir
+un modelo.
+
+Los modelos usan el bucket existente `planos-produccion`, separados de las
+referencias en `<orden_id>/<item_id>/modelos-3d/`. No requieren columnas nuevas.
+El bucket debe admitir `model/gltf-binary`, el tamaño del archivo y las
+operaciones de listar, subir y eliminar conforme a los permisos del usuario.
+El visor utiliza el acceso público del bucket, igual que las referencias actuales.
+Al reemplazar un modelo, primero se guarda el nuevo y luego se elimina el anterior.
+Un rechazo de permisos o de tipo de archivo se muestra en la ventana; no se
+modifican automáticamente las políticas de Supabase.
