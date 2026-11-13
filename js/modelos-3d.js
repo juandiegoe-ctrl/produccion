@@ -30,17 +30,22 @@ async function validateItemGlb(file){
   }
 }
 async function openItemModel3D(order,item){
-  document.querySelector('#itemModelDialog')?.remove();
+  const previous=document.querySelector('#itemModelDialog');
+  if(previous?.open)previous.close();
+  previous?.remove();
   const dialog=document.createElement('dialog');
   dialog.id='itemModelDialog';
   dialog.setAttribute('aria-labelledby','itemModelTitle');
   dialog.innerHTML=`<div class="item-model-head"><div><h2 id="itemModelTitle">Modelo 3D · ${esc(item.codigo||'Ítem')}</h2><p>${esc(item.catalogo_productos?.nombre||item.descripcion||'')}</p></div><button type="button" class="btn secondary" data-model-close aria-label="Cerrar visor 3D">Cerrar</button></div>
+    <div class="item-model-modes" role="group" aria-label="Estilo del modelo"><button type="button" data-model-mode="lines" aria-pressed="true" disabled>Líneas</button><button type="button" data-model-mode="volume" aria-pressed="false" disabled>Volumen</button></div>
     <div class="item-model-stage"><p>Buscando modelo…</p></div>
     <p class="item-model-status" role="status" aria-live="polite"></p>
     <div class="item-model-footer"><label class="btn primary item-model-upload" aria-disabled="true">Subir GLB<input type="file" accept=".glb,model/gltf-binary" aria-label="Subir modelo GLB" disabled></label><span>Opcional · GLB hasta 25 MB. Arrastra para girar y usa la rueda o dos dedos para acercar.</span></div>`;
   document.body.append(dialog);dialog.showModal();
   dialog.querySelector('[data-model-close]').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  let disposeLines=()=>{};
+  let renderSequence=0;
+  dialog.addEventListener('close',()=>{renderSequence++;disposeLines();dialog.remove();},{once:true});
   const stage=dialog.querySelector('.item-model-stage');
   const status=dialog.querySelector('.item-model-status');
   const input=dialog.querySelector('input');
@@ -50,12 +55,30 @@ async function openItemModel3D(order,item){
   let existing=[];
   const active=()=>dialog.isConnected&&dialog.open;
   const setBusy=busy=>{input.disabled=busy;label.setAttribute('aria-disabled',String(busy));};
+  let currentPath=null;
+  let mode='lines';
+  const modeButtons=dialog.querySelectorAll('[data-model-mode]');
   const showModel=async path=>{
+    currentPath=path;
+    const sequence=++renderSequence;
+    disposeLines();disposeLines=()=>{};
+    modeButtons.forEach(button=>{button.disabled=false;button.setAttribute('aria-pressed',String(button.dataset.modelMode===mode));});
     stage.replaceChildren();
     status.textContent='Cargando visor 3D…';
     try{
+      const url=bucket.getPublicUrl(path).data.publicUrl;
+      stage.classList.toggle('technical-view',mode==='lines');
+      if(mode==='lines'){
+        status.textContent='Cargando vista de líneas…';
+        const host=document.createElement('div');host.className='item-model-lines';stage.append(host);
+        const {createItemLineViewer}=await import('./modelos-3d-lineas.js');
+        if(!active()||sequence!==renderSequence)return;
+        const controller=await createItemLineViewer(host,url);
+        if(!active()||sequence!==renderSequence){controller.dispose();return;}
+        disposeLines=()=>controller.dispose();status.textContent='';return;
+      }
       await loadItemModelViewer();
-      if(!active())return;
+      if(!active()||sequence!==renderSequence)return;
       const viewer=document.createElement('model-viewer');
       viewer.setAttribute('alt',`Modelo 3D de ${item.codigo||'ítem'}`);
       viewer.setAttribute('camera-controls','');
@@ -68,12 +91,16 @@ async function openItemModel3D(order,item){
       viewer.setAttribute('camera-orbit','35deg 60deg auto');
       viewer.setAttribute('field-of-view','35deg');
       viewer.setAttribute('src',bucket.getPublicUrl(path).data.publicUrl);
-      viewer.addEventListener('load',()=>{if(active())status.textContent='';});
-      viewer.addEventListener('error',()=>{if(active())status.textContent='No se pudo abrir el modelo. Comprueba el archivo GLB y su acceso en Supabase.';});
+      viewer.addEventListener('load',()=>{if(active()&&sequence===renderSequence)status.textContent='';});
+      viewer.addEventListener('error',()=>{if(active()&&sequence===renderSequence)status.textContent='No se pudo abrir el modelo. Comprueba el archivo GLB y su acceso en Supabase.';});
       stage.append(viewer);
       status.textContent='Cargando modelo…';
-    }catch(error){if(active())status.textContent=error.message;}
+    }catch(error){if(active()&&sequence===renderSequence)status.textContent=error.message;}
   };
+  modeButtons.forEach(button=>button.onclick=()=>{
+    if(!currentPath||mode===button.dataset.modelMode)return;
+    mode=button.dataset.modelMode;showModel(currentPath);
+  });
   try{
     const {data,error}=await bucket.list(folder,{limit:100,sortBy:{column:'name',order:'desc'}});
     if(error)throw error;
