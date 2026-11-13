@@ -2732,7 +2732,10 @@ hr{display:none!important}
    ========================================================= */
 .manufacture-top{margin-bottom:18px!important}
 .manufacture-filter{
-  max-width:520px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));
+  gap:14px;
+  max-width:760px;
   margin-bottom:24px;
 }
 .manufacture-filter label{
@@ -3135,6 +3138,16 @@ hr{display:none!important}
         <label>
           <span>Producto</span>
           <select id="manufactureProduct"></select>
+        </label>
+        <label>
+          <span>Estado</span>
+          <select id="manufactureStateFilter">
+            <option value="all" selected>Todos</option>
+            <option value="MOLDE">Por armar molde</option>
+            <option value="FUNDIR">Por fundir</option>
+            <option value="PULIR">Por pulir</option>
+            <option value="ALISTAR">Por alistar</option>
+          </select>
         </label>
       </section>
 
@@ -5778,13 +5791,18 @@ async function loadManufactureProducts(){
   }
 }
 
+let manufactureRenderSequence=0;
 async function renderManufactureView(){
+  const sequence=++manufactureRenderSequence;
   const container=$('#manufactureResult');
   const select=$('#manufactureProduct');
   if(!container||!select)return;
 
   if(!select.options.length)await loadManufactureProducts();
+  if(sequence!==manufactureRenderSequence)return;
 
+  const state=$('#manufactureStateFilter').value;
+  const stateLabel=$('#manufactureStateFilter').selectedOptions[0].textContent;
   const productId=select.value;
   const productName=select.options[select.selectedIndex]?.text||'Producto';
 
@@ -5808,6 +5826,7 @@ async function renderManufactureView(){
   .eq('catalogo_producto_id',productId)
   .not('estado','in','("ENTREGADO","CERRADO")');
 
+  if(sequence!==manufactureRenderSequence)return;
   if(error){
     console.error('Por fabricar:',error);
     container.innerHTML=`<div class="empty">No fue posible cargar la lista: ${esc(error.message)}</div>`;
@@ -5816,6 +5835,7 @@ async function renderManufactureView(){
 
   const rows=(data||[])
     .filter(row=>row.ordenes_produccion && row.ordenes_produccion.cerrada!==true)
+    .filter(row=>state==='all'||row.estado===state)
     .map(row=>{
       const order=row.ordenes_produccion;
       const project=order.proyectos||{};
@@ -5831,19 +5851,19 @@ async function renderManufactureView(){
     <div class="manufacture-summary">
       <small>${esc(productName)}</small>
       <strong>${rows.length}</strong>
-      <span>por fabricar</span>
+      <span>${state==='all'?'por fabricar':esc(stateLabel.toLowerCase())}</span>
     </div>
     <div class="manufacture-table-wrap">
       <table class="manufacture-table">
-        <thead><tr><th>OP</th><th>Cliente</th><th>Color</th></tr></thead>
+        <thead><tr><th>OP</th><th>Cliente</th><th>Color</th><th>Estado</th></tr></thead>
         <tbody>
           ${rows.length ? rows.map(({order,item,clientName})=>`
             <tr data-manufacture-order="${esc(order.id)}">
               <td><button type="button" class="manufacture-op">${esc(order.numero_op||'—')}</button></td>
               <td>${esc(clientName)}</td>
-              <td>${esc(item.colores||'—')}</td>
+              <td>${esc(item.colores||'—')}</td><td>${esc(item.estado||'—')}</td>
             </tr>
-          `).join('') : `<tr><td colspan="3">No hay piezas pendientes de este producto.</td></tr>`}
+          `).join('') : `<tr><td colspan="4">No hay piezas pendientes de este producto${state==='all'?'':' en este estado'}.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -5856,6 +5876,7 @@ async function renderManufactureView(){
 
 async function showManufactureView(){
   currentView='manufacture';
+  $('#manufactureStateFilter').value='all';
   hideProductionViews();
   $('#manufactureView').classList.remove('hidden');
   $('#manufactureNav').classList.add('active');
@@ -6015,6 +6036,7 @@ async function init(){
     if($('#attendanceNav')) $('#attendanceNav').onclick=showAttendanceView;
     if($('#prioritySearch')) $('#prioritySearch').oninput=renderPriorityView;
     $('#manufactureProduct').onchange=()=>renderManufactureView();
+    $('#manufactureStateFilter').onchange=()=>renderManufactureView();
     if($('#dosageDate')) $('#dosageDate').value=new Date().toISOString().slice(0,10);
     $('#newOrder').onclick=openNew;
     $('#showEmployeeForm').onclick=()=>{
