@@ -199,3 +199,27 @@ los perfiles y la restricción de visor; no contiene ni cambia contraseñas y
 rechaza modificar cuentas administradoras. Si falta una cuenta, revierte toda
 la asignación. Los usuarios deben iniciar una sesión nueva después de la
 asignación para que la interfaz reciba los permisos actualizados.
+
+## Actividades compartidas entre usuarios
+
+Ejecutar `db/actividades-compartidas.sql` en SQL Editor después de la configuración
+de usuarios. Crea la selección compartida, los textos adicionales por fecha y
+los permisos: todas las cuentas activas de Producción pueden consultar; solo
+`ADMINISTRADOR` y `PRODUCCION` pueden editar, excluyendo las cuentas de solo visor.
+Las selecciones conservan prioridad entre días y se retiran mediante un trigger
+al confirmar el avance del ítem. Cada etapa mantiene su grupo en pantalla y PDF.
+
+Después de aplicar el SQL y desplegar, abrir el botón de fecha desde el navegador
+que tenía los ítems marcados y pulsar **Compartir mi selección anterior**. La
+importación es explícita, conserva el orden, no duplica selecciones existentes y
+no borra la copia local si falla. Se omiten ítems que ya avanzaron o se cerraron.
+Las nuevas selecciones y actividades adicionales se guardan en Supabase; no hay
+un modo local silencioso si faltan las tablas. Realtime sincroniza cambios y una
+consulta cada 15 segundos mantiene la actualización si falla el canal.
+
+Verificación de SQL en PostgreSQL 16 aislado: cargar
+`tests/fixtures/actividades-base.sql`, `db/usuarios-produccion.sql`,
+`db/actividades-compartidas.sql` y `tests/actividades-compartidas.integration.sql`.
+Los archivos de tests usan usuarios ficticios y nunca deben ejecutarse sobre la
+base de producción. Incluyen permisos, prioridad, idempotencia, órdenes cerradas,
+texto compartido y retirada del pendiente por avance.

@@ -3284,6 +3284,7 @@ hr{display:none!important}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/mezclas.js"></script>
 <script src="js/accesos.js"></script>
+<script src="js/actividades-compartidas.js"></script>
 <script src="js/avances.js"></script>
 <script src="js/modelos-3d.js"></script>
 <script>
@@ -3336,6 +3337,7 @@ function refreshDailyPlanDate(){
     document.querySelectorAll('[data-daily-item]').forEach(input=>{
       input.checked=ids.has(input.dataset.dailyItem);
     });
+    if(sharedDaily.userId)refreshSharedDaily();
     if(document.querySelector('#dailyPlan')?.open)showDailyPlan();
   }
 }
@@ -3369,54 +3371,28 @@ function readDailyPending(){
   return pending;
 }
 function dailyPlanIds(){
-  try{return Object.entries(readDailyPending()).sort((a,b)=>a[1].priority-b[1].priority).map(([id])=>id);}
-  catch{return [];}
+  return sharedDaily.ready?sharedDaily.pending.map(row=>String(row.item_id)):[];
 }
-function setDailyPlanItem(id,selected){
-  const pending=readDailyPending();
-  const item=orders.flatMap(order=>order.items||[]).find(item=>String(item.id)===String(id));
-  if(selected){
-    if(!Object.prototype.hasOwnProperty.call(pending,String(id))){
-      const priority=Math.max(0,...Object.values(pending).map(entry=>entry.priority))+1;
-      pending[String(id)]={state:item?.estado||null,priority};
-    }
-  }else delete pending[String(id)];
-  localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
-}
-function reconcileDailyPending(){
-  try{
-    const pending=readDailyPending();
-    let changed=false;
-    orders.forEach(order=>(order.items||[]).forEach(item=>{
-      const id=String(item.id);
-      if(!Object.prototype.hasOwnProperty.call(pending,id))return;
-      const previous=pending[id].state;
-      const currentIndex=ITEM_STATES.indexOf(item.estado);
-      const previousIndex=ITEM_STATES.indexOf(previous);
-      if(item.estado==='ENTREGADO'||item.estado==='CERRADO'||(previousIndex>=0&&currentIndex>previousIndex)){
-        delete pending[id];changed=true;
-      }else if(previous!==item.estado){pending[id].state=item.estado;changed=true;}
-    }));
-    if(changed)localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
-    const ids=new Set(Object.keys(pending));
-    document.querySelectorAll('[data-daily-item]').forEach(input=>{input.checked=ids.has(input.dataset.dailyItem);});
-    if(changed&&document.querySelector('#dailyPlan')?.open)showDailyPlan();
-  }catch(error){console.error('No se pudieron actualizar las actividades pendientes:',error);}
-}
+async function setDailyPlanItem(id,selected){return setSharedDailyItem(id,selected);}
+function reconcileDailyPending(){updateSharedDailyUI();}
 function dailyPlanRows(){
   const items=new Map(orders.flatMap(order=>(order.items||[]).map(item=>[String(item.id),{order,item}])));
   return dailyPlanIds().map(id=>items.get(id)).filter(row=>row&&DAILY_PLAN_STAGES[row.item.estado]);
 }
 function dailyExtraKey(){return 'estona-actividades-adicionales:'+dailyPlanDate();}
 function dailyExtraText(){
-  try{return localStorage.getItem(dailyExtraKey())||'';}catch{return '';}
+  return sharedDailyExtraText();
 }
 function showDailyPlan(){
   let dialog=document.querySelector('#dailyPlan');
   if(!dialog){dialog=document.createElement('dialog');dialog.id='dailyPlan';document.body.append(dialog);}
   const rows=dailyPlanRows();
   const extraText=dailyExtraText();
-  dialog.innerHTML=`<div class="daily-toolbar no-print"><button id="closeDailyPlan" class="btn secondary">Cerrar</button><button id="printDailyPlan" class="btn primary" ${rows.length||extraText.trim()?'':'disabled'}>Imprimir / Guardar PDF</button></div>
+  const editable=canEditSharedDaily();
+  const localCount=localDailyImportCount();
+  dialog.innerHTML=`<div class="daily-toolbar no-print"><button id="closeDailyPlan" class="btn secondary">Cerrar</button><button id="printDailyPlan" class="btn primary" ${sharedDaily.ready&&!sharedDaily.error&&(rows.length||extraText.trim())?'':'disabled'}>Imprimir / Guardar PDF</button></div>
+    <div class="no-print" role="status">${esc(sharedDaily.error||(!sharedDaily.ready?'Cargando actividades compartidas…':''))}</div>
+    ${localCount?`<div class="no-print daily-import"><p>Tienes una selección anterior guardada en este navegador.</p><button id="importDailyLocal" type="button" class="btn secondary">Compartir mi selección anterior (${localCount})</button></div>`:''}
     <header class="daily-sheet-header">
       <div><img class="daily-sheet-logo" src="${esc(document.querySelector('.logo img').src)}" alt="Estona"><h1>Hoja de producción</h1></div>
       <div class="daily-sheet-date"><span>Actividades del día</span><strong>${esc(dailyPlanDate().split('-').reverse().join('/'))}</strong></div>
@@ -3424,30 +3400,38 @@ function showDailyPlan(){
     ${Object.entries(DAILY_PLAN_STAGES).map(([stage,label])=>{
       const group=rows.filter(row=>row.item.estado===stage);
       if(!group.length)return '';
-      return `<section class="daily-stage" data-daily-stage="${stage}"><h2>${label} · ${group.length}</h2><table><thead><tr><th>Prioridad</th><th>OP / Cliente</th><th>Ítem / Producto</th><th>Dimensiones / Color</th><th>Peso</th><th>Comentarios</th><th class="no-print">Selección</th></tr></thead><tbody>${group.map(({order,item},index)=>`<tr data-daily-priority-item="${esc(item.id)}"><td><strong>${index+1}</strong></td><td>${esc(order.numero_op)}<br>${esc(order.cliente)}</td><td>${esc(item.codigo)}<br>${esc(item.catalogo_productos?.nombre||item.descripcion)}</td><td>${esc(item.dimensiones||'—')}<br>${esc(item.colores||'—')}</td><td>${Number(item.peso_kg||0).toLocaleString('es-CO')} kg</td><td>${esc(item.comentarios||'—')}</td><td class="no-print"><button data-daily-remove="${esc(item.id)}">Quitar</button></td></tr>`).join('')}</tbody></table></section>`;
+      return `<section class="daily-stage" data-daily-stage="${stage}"><h2>${label} · ${group.length}</h2><table><thead><tr><th>Prioridad</th><th>OP / Cliente</th><th>Ítem / Producto</th><th>Dimensiones / Color</th><th>Peso</th><th>Comentarios</th><th class="no-print">Selección</th></tr></thead><tbody>${group.map(({order,item},index)=>`<tr data-daily-priority-item="${esc(item.id)}"><td><strong>${index+1}</strong></td><td>${esc(order.numero_op)}<br>${esc(order.cliente)}</td><td>${esc(item.codigo)}<br>${esc(item.catalogo_productos?.nombre||item.descripcion)}</td><td>${esc(item.dimensiones||'—')}<br>${esc(item.colores||'—')}</td><td>${Number(item.peso_kg||0).toLocaleString('es-CO')} kg</td><td>${esc(item.comentarios||'—')}</td><td class="no-print">${editable?`<button data-daily-remove="${esc(item.id)}">Quitar</button>`:''}</td></tr>`).join('')}</tbody></table></section>`;
     }).join('')||'<p>No hay ítems seleccionados para esta fecha.</p>'}
     <section class="daily-extra-tasks ${extraText.trim()?'has-content':''}"><h2>Otras actividades</h2>
-      <label class="no-print">Actividades adicionales<textarea id="dailyExtraInput" class="daily-extra-input" placeholder="Por ejemplo: hacer aseo, barrer…">${esc(extraText)}</textarea></label>
+      <label class="no-print" ${editable?'':'hidden'}>Actividades adicionales<textarea id="dailyExtraInput" class="daily-extra-input" maxlength="5000" ${editable?'':'disabled'} placeholder="Por ejemplo: hacer aseo, barrer…">${esc(extraText)}</textarea></label>
       <p id="dailyExtraStatus" class="no-print" role="status"></p>
       <div class="daily-extra-content">${esc(extraText.trim())}</div>
     </section>`;
+  dialog.querySelector('#dailyExtraInput').onblur=()=>refreshSharedDaily();
   dialog.querySelector('#dailyExtraInput').oninput=event=>{
     const text=event.target.value;
     dialog.querySelector('.daily-extra-tasks').classList.toggle('has-content',Boolean(text.trim()));
     dialog.querySelector('.daily-extra-content').textContent=text.trim();
     dialog.querySelector('#printDailyPlan').disabled=!rows.length&&!text.trim();
     const status=dialog.querySelector('#dailyExtraStatus');
-    try{localStorage.setItem(dailyExtraKey(),text);status.textContent='';}
-    catch{status.textContent='No se pudo guardar el texto en este navegador. Puedes imprimirlo antes de cerrar.';}
+    queueSharedDailyExtra(text);
   };
+  dialog.querySelector('#importDailyLocal')?.addEventListener('click',async event=>{
+    event.currentTarget.disabled=true;
+    try{await importLocalDailyPlan();showDailyPlan();}
+    catch(error){alert(error.message);showDailyPlan();}
+  });
   dialog.querySelector('#closeDailyPlan').onclick=()=>dialog.close();
-  dialog.querySelector('#printDailyPlan').onclick=()=>{
+  dialog.querySelector('#printDailyPlan').onclick=async()=>{
+    try{await flushSharedDailyExtra();}
+    catch(error){alert('No se pudo guardar antes de imprimir: '+error.message);return;}
     document.body.classList.add('printing-daily-plan');
     try{window.print();}finally{document.body.classList.remove('printing-daily-plan');}
   };
-  dialog.querySelectorAll('[data-daily-remove]').forEach(button=>button.onclick=()=>{
-    try{setDailyPlanItem(button.dataset.dailyRemove,false);}
-    catch{alert('No se pudo guardar la selección.');return;}
+  dialog.querySelectorAll('[data-daily-remove]').forEach(button=>button.onclick=async()=>{
+    button.disabled=true;
+    try{await setDailyPlanItem(button.dataset.dailyRemove,false);}
+    catch(error){alert(error.message||'No se pudo guardar la selección.');button.disabled=false;return;}
     document.querySelectorAll('[data-daily-item]').forEach(input=>{
       if(input.dataset.dailyItem===button.dataset.dailyRemove)input.checked=false;
     });
@@ -3684,6 +3668,7 @@ async function loadOrders({openRequested=true}={}){
 
   if(error) throw error;
   orders=(data||[]).map(mapOrder);
+  if(sharedDaily.userId)await refreshSharedDaily({render:false});
   reconcileDailyPending();
   renderAll();
   if(currentView==='priority')renderPriorityView();
@@ -4702,7 +4687,7 @@ async function openOrder(id){
       <div class="item-head">
         <div class="item-identity">
           <div class="item-code-row"><div class="item-code">${esc(item.codigo)}</div>
-          <label class="daily-choice" title="Incluir en las actividades de ${dailyPlanLabel()}"><input type="checkbox" aria-label="Incluir en las actividades del día" data-daily-item="${esc(item.id)}" ${dailyPlanIds().includes(String(item.id))?'checked':''}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2"/></svg></label></div>
+          <label class="daily-choice" title="Incluir en las actividades de ${dailyPlanLabel()}"><input type="checkbox" aria-label="Incluir en las actividades del día" data-daily-item="${esc(item.id)}" ${dailyPlanIds().includes(String(item.id))?'checked':''} ${canEditSharedDaily()?'':'disabled'}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2"/></svg></label></div>
           <strong class="item-name">${esc(item.catalogo_productos?.nombre||item.descripcion)}</strong>
         </div>
         <div class="item-actions">
@@ -4755,9 +4740,11 @@ async function openOrder(id){
       };
     });
     list.querySelectorAll('[data-daily-item]').forEach(input=>{
-      input.onchange=()=>{
-        try{setDailyPlanItem(input.dataset.dailyItem,input.checked);}
-        catch(error){input.checked=!input.checked;alert('No se pudo guardar la selección en este navegador.');}
+      input.onchange=async()=>{
+        const selected=input.checked;input.disabled=true;
+        try{await setDailyPlanItem(input.dataset.dailyItem,selected);}
+        catch(error){input.checked=dailyPlanIds().includes(input.dataset.dailyItem);alert(error.message||'No se pudo guardar la selección compartida.');}
+        finally{input.disabled=!canEditSharedDaily();}
       };
     });
     drawer._mixtures?.renderItems();
@@ -6060,6 +6047,8 @@ async function handleLogin(event){
 }
 
 async function handleLogout(){
+  try{await flushSharedDailyExtra();}
+  catch(error){alert('No se pudieron guardar las actividades: '+error.message);return;}
   try{
     await db.auth.signOut();
   }finally{
@@ -6074,6 +6063,7 @@ async function showAuthenticated(user){
   if(userLabel)userLabel.textContent=user.email||'Usuario';
   try{
     await initializeProductionAdvances(user);
+    await initializeSharedDaily(user);
     await loadCatalog();
     await loadOrders();
   }catch(error){
@@ -6086,6 +6076,8 @@ async function showAuthenticated(user){
 function showLogin(){
   closeDrawer();
   resetProductionAdvances();
+  resetSharedDaily();
+  document.querySelector('#dailyPlan')?.close();
   $('#loginScreen').classList.remove('hidden');
   document.body.style.overflow='hidden';
   orders=[];
@@ -6103,13 +6095,10 @@ async function init(){
     $('#logoutButton').onclick=handleLogout;
     $('#search').oninput=renderAll;
     $('#closedFilter').onchange=renderAll;
-    $('#dailyPlanNav').onclick=showDailyPlan;
+    $('#dailyPlanNav').onclick=async()=>{showDailyPlan();await refreshSharedDaily();};
     refreshDailyPlanDate();
     setInterval(refreshDailyPlanDate,1000);
     window.addEventListener('focus',refreshDailyPlanDate);
-    window.addEventListener('storage',event=>{
-      if(event.key===DAILY_PENDING_KEY){reconcileDailyPending();if(document.querySelector('#dailyPlan')?.open)showDailyPlan();}
-    });
     $('#ordersNav').onclick=showOrdersView;
     $('#manufactureNav').onclick=showManufactureView;
     $('#advancesNav').onclick=showProductionAdvances;
