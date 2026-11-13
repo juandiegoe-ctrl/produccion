@@ -3271,15 +3271,54 @@ function refreshDailyPlanDate(){
     if(document.querySelector('#dailyPlan')?.open)showDailyPlan();
   }
 }
-function dailyPlanKey(){return 'estona-produccion-dia:'+dailyPlanDate();}
+const DAILY_PENDING_KEY='estona-produccion-pendientes-v1';
+function dailyPlanKey(){return DAILY_PENDING_KEY;}
+function readDailyPending(){
+  const saved=localStorage.getItem(DAILY_PENDING_KEY);
+  if(saved!==null)return JSON.parse(saved);
+  // Preserve earlier date selections; write the migration once so completed work cannot return.
+  const pending={};
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(!key?.startsWith('estona-produccion-dia:'))continue;
+    try{
+      const ids=JSON.parse(localStorage.getItem(key));
+      if(Array.isArray(ids))ids.forEach(id=>{if(typeof id==='string')pending[id]=null;});
+    }catch{}
+  }
+  localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
+  return pending;
+}
 function dailyPlanIds(){
-  try{const ids=JSON.parse(localStorage.getItem(dailyPlanKey())||'[]');return Array.isArray(ids)?ids.filter(id=>typeof id==='string'):[];}
+  try{return Object.keys(readDailyPending());}
   catch{return [];}
 }
 function setDailyPlanItem(id,selected){
-  const ids=new Set(dailyPlanIds());
-  selected?ids.add(String(id)):ids.delete(String(id));
-  localStorage.setItem(dailyPlanKey(),JSON.stringify([...ids]));
+  const pending=readDailyPending();
+  const item=orders.flatMap(order=>order.items||[]).find(item=>String(item.id)===String(id));
+  if(selected)pending[String(id)]=item?.estado||null;
+  else delete pending[String(id)];
+  localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
+}
+function reconcileDailyPending(){
+  try{
+    const pending=readDailyPending();
+    let changed=false;
+    orders.forEach(order=>(order.items||[]).forEach(item=>{
+      const id=String(item.id);
+      if(!Object.prototype.hasOwnProperty.call(pending,id))return;
+      const previous=pending[id];
+      const currentIndex=ITEM_STATES.indexOf(item.estado);
+      const previousIndex=ITEM_STATES.indexOf(previous);
+      if(item.estado==='ENTREGADO'||item.estado==='CERRADO'||(previousIndex>=0&&currentIndex>previousIndex)){
+        delete pending[id];changed=true;
+      }else if(previous!==item.estado){pending[id]=item.estado;changed=true;}
+    }));
+    if(changed)localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
+    const ids=new Set(Object.keys(pending));
+    document.querySelectorAll('[data-daily-item]').forEach(input=>{input.checked=ids.has(input.dataset.dailyItem);});
+    if(changed&&document.querySelector('#dailyPlan')?.open)showDailyPlan();
+  }catch(error){console.error('No se pudieron actualizar las actividades pendientes:',error);}
 }
 function dailyPlanRows(){
   const ids=new Set(dailyPlanIds());
@@ -3293,7 +3332,7 @@ function showDailyPlan(){
   const rows=dailyPlanRows();
   dialog.innerHTML=`<div class="daily-toolbar no-print"><button id="closeDailyPlan" class="btn secondary">Cerrar</button><button id="printDailyPlan" class="btn primary" ${rows.length?'':'disabled'}>Imprimir / Guardar PDF</button></div>
     <h1>Producción del día</h1><p>${esc(dailyPlanDate().split('-').reverse().join('/'))} · ${rows.length} ítems para intervenir</p>
-    <p class="no-print">Selección para esta fecha guardada solo en este navegador. Desde las 8:00 p. m. (Colombia) se muestran las actividades del día siguiente. Marca la casilla con el icono de calendario en los ítems de cada orden. Los entregados y cerrados quedan fuera del listado.</p>
+    <p class="no-print">Los ítems siguen pendientes hasta que se registre su avance, aunque cambie el día. Selección guardada solo en este navegador. Desde las 8:00 p. m. (Colombia) se muestra la fecha del día siguiente. Marca la casilla con el icono de calendario en los ítems de cada orden. Los entregados y cerrados quedan fuera del listado.</p>
     ${Object.entries(DAILY_PLAN_STAGES).map(([stage,label])=>{
       const group=rows.filter(row=>row.item.estado===stage);
       if(!group.length)return '';
@@ -3543,6 +3582,7 @@ async function loadOrders({openRequested=true}={}){
 
   if(error) throw error;
   orders=(data||[]).map(mapOrder);
+  reconcileDailyPending();
   renderAll();
   if(currentView==='dashboard')renderStageDashboard();
   if(currentView==='priority')renderPriorityView();
@@ -4621,6 +4661,8 @@ async function openOrder(id){
         // exactamente en el ítem que está trabajando.
         item.estado=data?.estado||nextState;
         item.fecha_ultimo_estado=data?.fecha_ultimo_estado||new Date().toISOString();
+
+        reconcileDailyPending();
 
         if(item.estado==='CERRADO'){
           item.nivel_prioridad=null;
@@ -5996,6 +6038,9 @@ async function init(){
     refreshDailyPlanDate();
     setInterval(refreshDailyPlanDate,1000);
     window.addEventListener('focus',refreshDailyPlanDate);
+    window.addEventListener('storage',event=>{
+      if(event.key===DAILY_PENDING_KEY){reconcileDailyPending();if(document.querySelector('#dailyPlan')?.open)showDailyPlan();}
+    });
     $('#ordersNav').onclick=showOrdersView;
     $('#dashboardNav').onclick=showDashboardView;
     $('#manufactureNav').onclick=showManufactureView;

@@ -162,6 +162,7 @@ async function mountProductionItemAdvances(drawer,order){
     if(error)throw error;
     if(!current()||sequence!==refreshSequence)return;
     (data||[]).forEach(update=>{const item=order.items.find(i=>i.id===update.id);if(item)Object.assign(item,update)});
+    reconcileDailyPending();
     renderItems();
   };
   drawer._advances={renderItems,refresh};
