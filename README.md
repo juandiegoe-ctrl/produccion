@@ -154,3 +154,8 @@ El visor utiliza el acceso público del bucket, igual que las referencias actual
 Al reemplazar un modelo, primero se guarda el nuevo y luego se elimina el anterior.
 Un rechazo de permisos o de tipo de archivo se muestra en la ventana; no se
 modifican automáticamente las políticas de Supabase.
+
+Si la subida indica `mime type model/gltf-binary is not supported`, ejecuta
+`db/modelos-3d.sql` en el SQL Editor del proyecto Supabase. Añade ese formato sin
+reemplazar los existentes ni modificar las políticas o los límites de tamaño.
+Después vuelve a subir el GLB desde el botón 3D; no hace falta redesplegar el portal.
