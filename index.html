@@ -3341,29 +3341,44 @@ const DAILY_PENDING_KEY='estona-produccion-pendientes-v1';
 function dailyPlanKey(){return DAILY_PENDING_KEY;}
 function readDailyPending(){
   const saved=localStorage.getItem(DAILY_PENDING_KEY);
-  if(saved!==null)return JSON.parse(saved);
-  // Preserve earlier date selections; write the migration once so completed work cannot return.
-  const pending={};
-  for(let i=0;i<localStorage.length;i++){
-    const key=localStorage.key(i);
-    if(!key?.startsWith('estona-produccion-dia:'))continue;
-    try{
-      const ids=JSON.parse(localStorage.getItem(key));
-      if(Array.isArray(ids))ids.forEach(id=>{if(typeof id==='string')pending[id]=null;});
-    }catch{}
+  const pending=saved===null?{}:JSON.parse(saved);
+  let changed=saved===null;
+  if(saved===null){
+    // Keep saved selections; historical selection times were not recorded.
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(!key?.startsWith('estona-produccion-dia:'))continue;
+      try{
+        const ids=JSON.parse(localStorage.getItem(key));
+        if(Array.isArray(ids))ids.forEach(id=>{if(typeof id==='string')pending[id]=null;});
+      }catch{}
+    }
   }
-  localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
+  let nextPriority=Math.max(0,...Object.values(pending).map(entry=>Number(entry?.priority)||0));
+  Object.keys(pending).forEach(id=>{
+    const entry=pending[id];
+    if(!entry||typeof entry!=='object'){
+      pending[id]={state:entry||null,priority:++nextPriority};changed=true;
+    }else if(!Number.isFinite(entry.priority)||entry.priority<=0){
+      entry.priority=++nextPriority;changed=true;
+    }
+  });
+  if(changed)localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
   return pending;
 }
 function dailyPlanIds(){
-  try{return Object.keys(readDailyPending());}
+  try{return Object.entries(readDailyPending()).sort((a,b)=>a[1].priority-b[1].priority).map(([id])=>id);}
   catch{return [];}
 }
 function setDailyPlanItem(id,selected){
   const pending=readDailyPending();
   const item=orders.flatMap(order=>order.items||[]).find(item=>String(item.id)===String(id));
-  if(selected)pending[String(id)]=item?.estado||null;
-  else delete pending[String(id)];
+  if(selected){
+    if(!Object.prototype.hasOwnProperty.call(pending,String(id))){
+      const priority=Math.max(0,...Object.values(pending).map(entry=>entry.priority))+1;
+      pending[String(id)]={state:item?.estado||null,priority};
+    }
+  }else delete pending[String(id)];
   localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
 }
 function reconcileDailyPending(){
@@ -3373,12 +3388,12 @@ function reconcileDailyPending(){
     orders.forEach(order=>(order.items||[]).forEach(item=>{
       const id=String(item.id);
       if(!Object.prototype.hasOwnProperty.call(pending,id))return;
-      const previous=pending[id];
+      const previous=pending[id].state;
       const currentIndex=ITEM_STATES.indexOf(item.estado);
       const previousIndex=ITEM_STATES.indexOf(previous);
       if(item.estado==='ENTREGADO'||item.estado==='CERRADO'||(previousIndex>=0&&currentIndex>previousIndex)){
         delete pending[id];changed=true;
-      }else if(previous!==item.estado){pending[id]=item.estado;changed=true;}
+      }else if(previous!==item.estado){pending[id].state=item.estado;changed=true;}
     }));
     if(changed)localStorage.setItem(DAILY_PENDING_KEY,JSON.stringify(pending));
     const ids=new Set(Object.keys(pending));
@@ -3387,10 +3402,8 @@ function reconcileDailyPending(){
   }catch(error){console.error('No se pudieron actualizar las actividades pendientes:',error);}
 }
 function dailyPlanRows(){
-  const ids=new Set(dailyPlanIds());
-  return orders.flatMap(order=>(order.items||[])
-    .filter(item=>ids.has(String(item.id))&&DAILY_PLAN_STAGES[item.estado])
-    .map(item=>({order,item})));
+  const items=new Map(orders.flatMap(order=>(order.items||[]).map(item=>[String(item.id),{order,item}])));
+  return dailyPlanIds().map(id=>items.get(id)).filter(row=>row&&DAILY_PLAN_STAGES[row.item.estado]);
 }
 function dailyExtraKey(){return 'estona-actividades-adicionales:'+dailyPlanDate();}
 function dailyExtraText(){
@@ -3406,11 +3419,7 @@ function showDailyPlan(){
       <div><img class="daily-sheet-logo" src="${esc(document.querySelector('.logo img').src)}" alt="Estona"><h1>Hoja de producción</h1></div>
       <div class="daily-sheet-date"><span>Actividades del día</span><strong>${esc(dailyPlanDate().split('-').reverse().join('/'))}</strong></div>
     </header>
-    ${Object.entries(DAILY_PLAN_STAGES).map(([stage,label])=>{
-      const group=rows.filter(row=>row.item.estado===stage);
-      if(!group.length)return '';
-      return `<section class="daily-stage"><h2>${label} · ${group.length}</h2><table><thead><tr><th>OP / Cliente</th><th>Ítem / Producto</th><th>Dimensiones / Color</th><th>Peso</th><th>Comentarios</th><th class="no-print">Selección</th></tr></thead><tbody>${group.map(({order,item})=>`<tr><td>${esc(order.numero_op)}<br>${esc(order.cliente)}</td><td>${esc(item.codigo)}<br>${esc(item.catalogo_productos?.nombre||item.descripcion)}</td><td>${esc(item.dimensiones||'—')}<br>${esc(item.colores||'—')}</td><td>${Number(item.peso_kg||0).toLocaleString('es-CO')} kg</td><td>${esc(item.comentarios||'—')}</td><td class="no-print"><button data-daily-remove="${esc(item.id)}">Quitar</button></td></tr>`).join('')}</tbody></table></section>`;
-     }).join('')||'<p>No hay ítems seleccionados para esta fecha.</p>'}
+    ${rows.length?`<section class="daily-stage"><h2>Actividades por prioridad</h2><table><thead><tr><th>Prioridad</th><th>Actividad</th><th>OP / Cliente</th><th>Ítem / Producto</th><th>Dimensiones / Color</th><th>Peso</th><th>Comentarios</th><th class="no-print">Selección</th></tr></thead><tbody>${rows.map(({order,item},index)=>`<tr data-daily-priority-item="${esc(item.id)}"><td><strong>${index+1}</strong></td><td>${esc(DAILY_PLAN_STAGES[item.estado])}</td><td>${esc(order.numero_op)}<br>${esc(order.cliente)}</td><td>${esc(item.codigo)}<br>${esc(item.catalogo_productos?.nombre||item.descripcion)}</td><td>${esc(item.dimensiones||'—')}<br>${esc(item.colores||'—')}</td><td>${Number(item.peso_kg||0).toLocaleString('es-CO')} kg</td><td>${esc(item.comentarios||'—')}</td><td class="no-print"><button data-daily-remove="${esc(item.id)}">Quitar</button></td></tr>`).join('')}</tbody></table></section>`:'<p>No hay ítems seleccionados para esta fecha.</p>'}
     <section class="daily-extra-tasks ${extraText.trim()?'has-content':''}"><h2>Otras actividades</h2>
       <label class="no-print">Actividades adicionales<textarea id="dailyExtraInput" class="daily-extra-input" placeholder="Por ejemplo: hacer aseo, barrer…">${esc(extraText)}</textarea></label>
       <p id="dailyExtraStatus" class="no-print" role="status"></p>
