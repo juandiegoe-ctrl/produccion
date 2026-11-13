@@ -165,3 +165,37 @@ Si la subida indica `mime type model/gltf-binary is not supported`, ejecuta
 `db/modelos-3d.sql` en el SQL Editor del proyecto Supabase. Añade ese formato sin
 reemplazar los existentes ni modificar las políticas o los límites de tamaño.
 Después vuelve a subir el GLB desde el botón 3D; no hace falta redesplegar el portal.
+
+## Nuevos usuarios de Producción
+
+Pendiente de aplicar con acceso administrativo a Supabase:
+
+1. Ejecutar `db/usuarios-produccion.sql` en SQL Editor. Añade un bloqueo de
+   escrituras para los usuarios cuyo `app_metadata.production_view_only` sea
+   `true`; conserva las reglas existentes para los demás usuarios. Incluye
+   tablas de producción, perfiles y archivos del bucket `planos-produccion`.
+2. Ejecutar `python3 scripts/crear-usuarios-produccion.py` desde un equipo de
+   confianza. Solicita la clave administrativa y la contraseña inicial sin
+   mostrarlas ni guardarlas; usa HTTPS con verificación TLS. No enviar esas
+   claves por chat ni incorporarlas al repositorio.
+3. El script crea `produccion@estona.co` (Miguel) y `jeancarlos@estona.co` con
+   el rol existente `PRODUCCION`. Crea Jhonathan, Juan Gabriel, Alex, Sebastián,
+   Víctor e Iván como `PRODUCCION_LECTURA` con la restricción adicional de solo
+   visor. No envía correos ni cambia cuentas ya existentes; informa cuáles
+   requieren revisión. Verifica cada perfil y revierte solo la cuenta nueva
+   si falla su configuración.
+4. Comprobar el inicio de sesión con una cuenta de cada tipo. Producción puede
+   generar dosificaciones y registrar avances; los visores pueden consultar,
+   filtrar e imprimir, sin solicitar avances ni escribir datos o archivos.
+
+La contraseña no está incluida en estos archivos. La creación real de cuentas
+requiere ejecutar esos pasos; publicar el frontend por sí solo no las crea.
+
+Alternativa sin ejecutar Python: crear las ocho cuentas en Supabase
+**Authentication → Users → Add user**, con la contraseña elegida y el correo
+confirmado. Luego ejecutar `db/usuarios-produccion.sql` y
+`db/asignar-usuarios-produccion.sql`, en ese orden. El segundo archivo asigna
+los perfiles y la restricción de visor; no contiene ni cambia contraseñas y
+rechaza modificar cuentas administradoras. Si falta una cuenta, revierte toda
+la asignación. Los usuarios deben iniciar una sesión nueva después de la
+asignación para que la interfaz reciba los permisos actualizados.

@@ -34,7 +34,7 @@ async function openItemModel3D(order,item){
   const folder=`${order.id}/${item.id}/modelos-3d`;
   let existing=[];
   const active=()=>dialog.isConnected&&dialog.open;
-  const setBusy=busy=>{input.disabled=busy;label.setAttribute('aria-disabled',String(busy));};
+  const setBusy=busy=>{const disabled=busy||document.body.classList.contains('production-view-only');input.disabled=disabled;label.setAttribute('aria-disabled',String(disabled));};
   const measureText=dialog.querySelector('[data-model-measure]');
   const clearMeasure=dialog.querySelector('[data-model-clear]');
   let clearCurrentMeasure=()=>{};
@@ -72,6 +72,7 @@ async function openItemModel3D(order,item){
     return;
   }
   input.onchange=async()=>{
+    if(document.body.classList.contains('production-view-only'))return;
     const file=input.files?.[0];
     if(!file)return;
     setBusy(true);status.textContent='Validando modelo…';

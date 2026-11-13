@@ -1,0 +1,12 @@
+.production-view-only #newOrder,
+.production-view-only #showItemForm,
+.production-view-only #itemForm,
+.production-view-only .item-actions .edit,
+.production-view-only .item-actions .duplicate,
+.production-view-only .item-actions .delete,
+.production-view-only .reference-upload,
+.production-view-only [data-reference-delete],
+.production-view-only .mixture-generate,
+.production-view-only .item-model-upload,
+.production-view-only [data-daily-remove],
+.production-view-only #dailyExtraInput{display:none!important}

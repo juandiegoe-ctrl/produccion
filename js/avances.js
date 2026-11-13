@@ -1,5 +1,5 @@
 const productionAdvanceStages=['MOLDE','FUNDIR','PULIR','ALISTAR','ENTREGADO'];
-const productionAdvanceContext={profile:null,requests:[],sequence:0,channel:null};
+const productionAdvanceContext={profile:null,viewOnly:false,requests:[],sequence:0,channel:null};
 
 function nextProductionAdvance(state){
   const index=productionAdvanceStages.indexOf(state);
@@ -9,6 +9,8 @@ function nextProductionAdvance(state){
 function resetProductionAdvances(){
   productionAdvanceContext.sequence++;
   productionAdvanceContext.profile=null;
+  productionAdvanceContext.viewOnly=false;
+  setProductionViewerMode(false);
   productionAdvanceContext.requests=[];
   if(productionAdvanceContext.channel)db.removeChannel(productionAdvanceContext.channel);
   productionAdvanceContext.channel=null;
@@ -22,7 +24,9 @@ async function initializeProductionAdvances(user){
   if(error)throw error;
   if(!data?.activo)throw Error('El usuario no tiene acceso activo.');
   productionAdvanceContext.profile=data;
-  const enabled=['ADMINISTRADOR','PRODUCCION_LECTURA'].includes(data.rol);
+  productionAdvanceContext.viewOnly=user.app_metadata?.production_view_only===true;
+  setProductionViewerMode(productionAdvanceContext.viewOnly);
+  const enabled=!productionAdvanceContext.viewOnly&&['ADMINISTRADOR','PRODUCCION_LECTURA'].includes(data.rol);
   document.querySelector('#advancesNav')?.classList.toggle('hidden',!enabled);
   if(!enabled)return;
   await reloadProductionAdvances();
@@ -39,7 +43,7 @@ function showProductionAdvanceError(error){
 
 async function reloadProductionAdvances(){
   const profile=productionAdvanceContext.profile;
-  if(!profile || !['ADMINISTRADOR','PRODUCCION_LECTURA'].includes(profile.rol))return;
+  if(!profile || productionAdvanceContext.viewOnly || !['ADMINISTRADOR','PRODUCCION_LECTURA'].includes(profile.rol))return;
   const sequence=++productionAdvanceContext.sequence;
   const {data,error}=await db.from('solicitudes_avance_items').select(`
     id,item_id,estado_origen,estado_solicitado,estado,solicitante_id,creado_en,
@@ -130,7 +134,9 @@ async function mountProductionItemAdvances(drawer,order){
       itemCard.dataset.stage=item.estado;
       const state=itemCard.querySelector('.item-state-compact');
       const pending=productionAdvanceContext.requests.find(r=>r.item_id===item.id);
-      if(consultation){
+      if(productionAdvanceContext.viewOnly){
+        state.innerHTML=`<small>Estado</small><div class="advance-state-line"><strong>${esc(item.estado)}</strong></div>`;
+      }else if(consultation){
         const next=nextProductionAdvance(item.estado);
         state.innerHTML=`<small>Estado</small><div class="advance-state-line"><strong>${esc(item.estado)}</strong><button type="button" class="advance-request-button" title="${pending?'Avance pendiente':next?'Solicitar avance a '+next:'Sin otro avance'}" aria-label="${pending?'Avance pendiente':next?'Solicitar avance a '+next:'Sin otro avance'}" ${pending||!next||order.cerrada?'disabled':''}>→</button></div><p class="advance-item-status" role="status">${pending?'Pendiente: '+esc(pending.estado_solicitado):''}</p>`;
         const button=state.querySelector('button');
