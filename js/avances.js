@@ -127,6 +127,7 @@ async function mountProductionItemAdvances(drawer,order){
     drawer.querySelectorAll('#itemsList .item-card').forEach(itemCard=>{
       const item=order.items.find(i=>i.id===itemCard.querySelector('[data-edit]')?.dataset.edit);
       if(!item)return;
+      itemCard.dataset.stage=item.estado;
       const state=itemCard.querySelector('.item-state-compact');
       const pending=productionAdvanceContext.requests.find(r=>r.item_id===item.id);
       if(consultation){

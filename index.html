@@ -3094,6 +3094,46 @@ hr{display:none!important}
   #dailyPlan .daily-extra-tasks:not(.has-content){display:none!important}
   #dailyPlan .daily-sheet-date strong{font-size:36px!important}
 }
+
+/* Clear item hierarchy and a gray-to-green production progression. */
+#items .item-card-v58{padding:16px!important;border:1px solid #d9dedb!important;background:#fafbfa!important}
+#items .item-card-v58 .item-head{display:flex!important;flex-direction:row!important;align-items:flex-start!important;justify-content:space-between;gap:16px!important}
+#items .item-card-v58 .item-identity{flex:1;gap:8px}
+#items .item-code-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#items .item-card-v58 .item-code{font-size:23px!important;line-height:1.2!important;letter-spacing:.02em;font-weight:800}
+#items .item-card-v58 .daily-choice{display:inline-flex;align-items:center;gap:5px;margin:0;cursor:pointer;color:#59635d;min-height:30px}
+#items .daily-choice input{width:17px;height:17px;margin:0;accent-color:#247344}
+#items .item-card-v58 .item-name{font-size:20px!important;line-height:1.25!important;overflow-wrap:anywhere}
+#items .item-card-v58 .item-actions{display:flex;flex-wrap:nowrap;gap:6px!important;flex-shrink:0;width:auto!important}
+#items .item-card-v58 .item-actions button{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;min-height:34px!important;padding:0!important;border:1px solid #d9dedb;background:#fff;color:#505a54;border-radius:9px!important}
+#items .item-card-v58 .item-actions button:hover{background:#edf3ef;color:#175c35}
+#items .item-card-v58 .item-actions .delete:hover{background:#fdf0ef;color:#a02c23}
+#items .item-card-v58 .item-actions button:focus-visible,#items .daily-choice input:focus-visible{outline:2px solid #247344;outline-offset:3px}
+#items .item-card-v58 .item-facts{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid #e1e6e2}
+#items .item-card-v58 .item-facts small{font-size:10px!important;margin-bottom:4px!important}
+#items .item-card-v58 .item-facts strong{font-size:12px!important;overflow-wrap:anywhere}
+#items .item-card-v58 .item-work-row{margin-top:16px;gap:12px}
+#items .item-card-v58 .item-state-compact{--stage-bg:#eceeed;--stage-ink:#464e49;--stage-border:#cdd2ce}
+#items .item-card-v58[data-stage="FUNDIR"] .item-state-compact{--stage-bg:#e5ede6;--stage-ink:#455e49;--stage-border:#c4d5c7}
+#items .item-card-v58[data-stage="PULIR"] .item-state-compact{--stage-bg:#d5e9d9;--stage-ink:#315e3c;--stage-border:#aecfb7}
+#items .item-card-v58[data-stage="ALISTAR"] .item-state-compact{--stage-bg:#bce1c7;--stage-ink:#215d35;--stage-border:#8fc79f}
+#items .item-card-v58[data-stage="ENTREGADO"] .item-state-compact{--stage-bg:#83c99b;--stage-ink:#123e22;--stage-border:#63ae7c}
+#items .item-card-v58[data-stage="CERRADO"] .item-state-compact{--stage-bg:#246d40;--stage-ink:#fff;--stage-border:#246d40}
+#items .item-card-v58 .item-state{background:var(--stage-bg)!important;color:var(--stage-ink)!important;border:1px solid var(--stage-border)!important;font-weight:700;height:36px!important;min-height:36px!important;margin-top:6px}
+#items .item-card-v58 .item-state option{background:#fff;color:#242424}
+#items .item-card-v58 .advance-state-line{background:var(--stage-bg);color:var(--stage-ink);border:1px solid var(--stage-border);border-radius:8px;padding:6px 8px;margin-top:6px}
+@media(max-width:520px){
+  #items .item-card-v58{padding:12px!important}
+  #items .item-card-v58 .item-head{gap:8px!important}
+  #items .item-card-v58 .item-code{font-size:20px!important}
+  #items .item-card-v58 .item-name{font-size:18px!important}
+  #items .item-card-v58 .item-actions{gap:4px!important}
+  #items .item-card-v58 .item-actions button{width:30px;height:32px;min-height:32px!important}
+  #items .item-code-row{gap:8px}
+  #items .item-card-v58 .item-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #items .item-card-v58 .fact-color{grid-column:1/-1}
+}
+
 </style>
 <link rel="stylesheet" href="css/mezclas.css">
 <link rel="stylesheet" href="css/avances.css">
@@ -4634,17 +4674,17 @@ async function openOrder(id){
   const renderItems=()=>{
     const list=drawer.querySelector('#itemsList');
 
-    list.innerHTML=order.items.length?order.items.map(item=>`<article class="item-card item-card-compact item-card-v58">
+    list.innerHTML=order.items.length?order.items.map(item=>`<article class="item-card item-card-compact item-card-v58" data-stage="${esc(item.estado)}">
       <div class="item-head">
         <div class="item-identity">
-          <div class="item-code">${esc(item.codigo)}</div>
-          <label class="daily-choice" title="Incluir en las actividades de ${dailyPlanLabel()}"><input type="checkbox" aria-label="Incluir en las actividades del día" data-daily-item="${esc(item.id)}" ${dailyPlanIds().includes(String(item.id))?'checked':''}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2"/></svg></label>
+          <div class="item-code-row"><div class="item-code">${esc(item.codigo)}</div>
+          <label class="daily-choice" title="Incluir en las actividades de ${dailyPlanLabel()}"><input type="checkbox" aria-label="Incluir en las actividades del día" data-daily-item="${esc(item.id)}" ${dailyPlanIds().includes(String(item.id))?'checked':''}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2"/></svg></label></div>
           <strong class="item-name">${esc(item.catalogo_productos?.nombre||item.descripcion)}</strong>
         </div>
         <div class="item-actions">
-          <button class="edit" data-edit="${esc(item.id)}">Editar</button>
-          <button class="duplicate" data-duplicate="${esc(item.id)}">Duplicar</button>
-          <button class="delete" data-delete="${esc(item.id)}">Eliminar</button>
+          <button type="button" class="edit" data-edit="${esc(item.id)}" title="Editar ítem" aria-label="Editar ítem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5M4 20l4-1L21 6a2.1 2.1 0 0 0-3-3L5 16l-1 4Z"/></svg></button>
+          <button type="button" class="duplicate" data-duplicate="${esc(item.id)}" title="Duplicar ítem" aria-label="Duplicar ítem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4"/></svg></button>
+          <button type="button" class="delete" data-delete="${esc(item.id)}" title="Eliminar ítem" aria-label="Eliminar ítem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></button>
         </div>
       </div>
 
@@ -4726,6 +4766,7 @@ async function openOrder(id){
         item.fecha_ultimo_estado=data?.fecha_ultimo_estado||new Date().toISOString();
 
         reconcileDailyPending();
+        select.closest('.item-card').dataset.stage=item.estado;
 
         if(item.estado==='CERRADO'){
           item.nivel_prioridad=null;
