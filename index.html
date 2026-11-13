@@ -3053,9 +3053,17 @@ hr{display:none!important}
 }
 
 
-.order-items-filter{display:flex;flex-direction:column;gap:5px;font-size:12px;margin-left:auto}
-.order-items-filter select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
-@media(max-width:760px){.order-items-filter{margin-left:0;width:100%}}
+#items .items-heading{align-items:flex-end}
+.order-items-actions{display:flex;align-items:flex-end;gap:12px;margin-left:auto;max-width:100%}
+.order-items-filter{display:flex;flex-direction:column;gap:5px;font-size:12px;margin:0;min-width:0}
+#items .order-items-filter select,#items .order-items-actions .btn{height:40px;min-height:40px;box-sizing:border-box}
+.order-items-filter select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%}
+#items .order-items-actions .btn{width:auto;white-space:nowrap;flex-shrink:0}
+@media(max-width:760px){
+  #items .items-heading{align-items:stretch}
+  .order-items-actions{width:100%;margin-left:0}
+  .order-items-filter{flex:1}
+}
 .daily-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .daily-date{white-space:nowrap;font-size:18px;letter-spacing:.04em}
 .daily-choice{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:6px}
@@ -3769,6 +3777,7 @@ async function openOrder(id){
       <div class="card">
         <div class="items-heading">
           <div><h3>Ítems de la orden</h3></div>
+          <div class="order-items-actions">
           <label class="order-items-filter">Mostrar por estado
             <select id="orderItemsStateFilter">
               <option value="all" selected>Todos</option>
@@ -3776,6 +3785,7 @@ async function openOrder(id){
             </select>
           </label>
           <button id="showItemForm" class="btn primary">+ Agregar ítem</button>
+          </div>
         </div>
 
         <div id="itemForm" class="item-form hidden">
