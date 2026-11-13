@@ -142,12 +142,15 @@ ambos roles y reversión de los datos de prueba: `tests/avances.integration.sql`
 ## Modelos 3D opcionales por ítem
 
 El botón **3D** abre un visor para subir o consultar un archivo GLB versión 2
-(máximo 25 MB). El visor permite girar y acercar el modelo. Abre en **Líneas**, con caras claras
-y aristas oscuras (se omiten las diagonales coplanares), y permite cambiar a
-**Volumen**. La vista técnica usa Three.js 0.172.0; la vista de volumen usa
-`@google/model-viewer` 4.1.0. Las librerías se cargan desde `cdn.jsdelivr.net`
-solo al solicitar cada vista. Las cotas o anotaciones de SketchUp no se recrean
-automáticamente si el GLB no las contiene.
+(máximo 25 MB). El visor siempre muestra caras claras y aristas oscuras,
+omitiendo las diagonales coplanares. Permite girar, acercar y pulsar una arista
+para resaltar el segmento y mostrar su longitud en centímetros. Se mide el
+segmento seleccionado, no se unen automáticamente varios segmentos de un borde.
+La medida incluye las transformaciones y escalas de los nodos del GLB y usa
+la unidad estándar de glTF (metros); comprueba la escala exportada con una
+medida conocida antes de usarla en fabricación. «Quitar medida» limpia la selección.
+La vista usa Three.js 0.172.0, cargado desde `cdn.jsdelivr.net` al abrir el modelo.
+Las cotas o anotaciones originales de SketchUp no se recrean automáticamente.
 
 Los modelos usan el bucket existente `planos-produccion`, separados de las
 referencias en `<orden_id>/<item_id>/modelos-3d/`. No requieren columnas nuevas.
