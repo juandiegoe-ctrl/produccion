@@ -185,7 +185,7 @@ Pendiente de aplicar con acceso administrativo a Supabase:
    requieren revisión. Verifica cada perfil y revierte solo la cuenta nueva
    si falla su configuración.
 4. Comprobar el inicio de sesión con una cuenta de cada tipo. Producción puede
-   generar dosificaciones y registrar avances; los visores pueden consultar,
+   generar dosificaciones y solicitar avances para aprobación de Juan Diego; los visores pueden consultar,
    filtrar e imprimir, sin solicitar avances ni escribir datos o archivos.
 
 La contraseña no está incluida en estos archivos. La creación real de cuentas
@@ -223,3 +223,25 @@ Verificación de SQL en PostgreSQL 16 aislado: cargar
 Los archivos de tests usan usuarios ficticios y nunca deben ejecutarse sobre la
 base de producción. Incluyen permisos, prioridad, idempotencia, órdenes cerradas,
 texto compartido y retirada del pendiente por avance.
+
+
+## Avances con aprobación exclusiva de Juan Diego
+
+Ejecutar `db/avances-solo-propietario.sql` en SQL Editor. Solo la cuenta activa
+`juandiegoe@gmail.com` con rol `ADMINISTRADOR` puede cambiar estados directamente
+y aprobar/rechazar solicitudes. El resto de cuentas activas de producción
+solicitan la siguiente etapa; los visores no pueden solicitar. El rol
+`PRODUCCION` conserva la generación de dosificaciones y la edición de otros datos.
+Los ítems nuevos de otros usuarios inician en MOLDE y el estado no se puede
+cambiar desde el formulario de edición ni por una llamada directa al servidor.
+
+Solicitar no cambia el estado ni retira el pendiente de las actividades
+compartidas. Aprobar sí aplica el estado y retira el pendiente. Rechazar conserva
+el estado. Si el ítem cambió desde la solicitud, esta queda OBSOLETA.
+
+Verificación en una base PostgreSQL 16 **aislada**: cargar
+`tests/fixtures/avances-propietario-base.sql`, `db/solicitudes-avance.sql`,
+`db/usuarios-produccion.sql`, `db/actividades-compartidas.sql`,
+`db/avances-solo-propietario.sql` y `tests/avances-propietario.integration.sql`.
+Los fixtures son ficticios y nunca deben ejecutarse sobre producción. Esta
+prueba sustituye al antiguo test de avances para esta configuración del propietario.

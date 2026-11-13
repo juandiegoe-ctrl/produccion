@@ -3807,7 +3807,7 @@ async function openOrder(id){
           <input data-field="fecha_entrega" type="date" value="${esc(order.fecha_entrega||'')}">
         </div>
         <div class="field"><label>Estado de la orden en Producción</label>
-          <select id="orderProductionStatus">
+          <select id="orderProductionStatus" ${canApproveProductionAdvances()?'':'disabled'}>
             <option value="open" ${order.cerrada?'':'selected'}>ABIERTA</option>
             <option value="closed" ${order.cerrada?'selected':''}>CERRADA</option>
           </select>
@@ -3852,7 +3852,7 @@ async function openOrder(id){
               <input name="itemColors">
             </div>
             <div class="field"><label>Estado</label>
-              <select name="itemState">
+              <select name="itemState" ${canApproveProductionAdvances()?'':'disabled'}>
                 ${ITEM_STATES.map(state=>`<option>${state}</option>`).join('')}
               </select>
             </div>
@@ -4707,7 +4707,7 @@ async function openOrder(id){
       <div class="item-work-row">
         <div class="item-state-compact">
           <small>Estado</small>
-          <select class="item-state" data-state="${esc(item.id)}">
+          <select class="item-state" data-state="${esc(item.id)}" ${canApproveProductionAdvances()?'':'disabled'}>
             ${ITEM_STATES.map(state=>
               `<option ${state===item.estado?'selected':''}>${state}</option>`
             ).join('')}
@@ -4754,6 +4754,7 @@ async function openOrder(id){
         const item=order.items.find(candidate=>candidate.id===select.dataset.state);
         if(!item)return;
 
+        if(!canApproveProductionAdvances()){select.value=item.estado;return;}
         const previousState=item.estado;
         const nextState=select.value;
         select.disabled=true;
@@ -5178,7 +5179,7 @@ async function openOrder(id){
         peso_kg:values.weight,
         dimensiones:values.dimensions,
         colores:values.colors,
-        estado:values.state,
+        ...(canApproveProductionAdvances()?{estado:values.state}:{}),
         pulidor:values.pulidor,
         nivel_prioridad:values.priorityLevel,
         prioridad:Boolean(values.priorityLevel),
@@ -5198,7 +5199,7 @@ async function openOrder(id){
           localItem.peso_kg=values.weight;
           localItem.dimensiones=values.dimensions;
           localItem.colores=values.colors;
-          localItem.estado=values.state;
+          if(canApproveProductionAdvances())localItem.estado=values.state;
           localItem.pulidor=values.pulidor;
           localItem.nivel_prioridad=values.priorityLevel;
           localItem.prioridad=Boolean(values.priorityLevel);

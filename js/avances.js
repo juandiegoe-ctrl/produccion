@@ -1,5 +1,7 @@
 const productionAdvanceStages=['MOLDE','FUNDIR','PULIR','ALISTAR','ENTREGADO'];
-const productionAdvanceContext={profile:null,viewOnly:false,requests:[],sequence:0,channel:null};
+const productionAdvanceContext={profile:null,viewOnly:false,canApprove:false,requests:[],sequence:0,channel:null};
+
+function canApproveProductionAdvances(){return productionAdvanceContext.canApprove===true;}
 
 function nextProductionAdvance(state){
   const index=productionAdvanceStages.indexOf(state);
@@ -10,6 +12,7 @@ function resetProductionAdvances(){
   productionAdvanceContext.sequence++;
   productionAdvanceContext.profile=null;
   productionAdvanceContext.viewOnly=false;
+  productionAdvanceContext.canApprove=false;
   setProductionViewerMode(false);
   productionAdvanceContext.requests=[];
   if(productionAdvanceContext.channel)db.removeChannel(productionAdvanceContext.channel);
@@ -25,8 +28,9 @@ async function initializeProductionAdvances(user){
   if(!data?.activo)throw Error('El usuario no tiene acceso activo.');
   productionAdvanceContext.profile=data;
   productionAdvanceContext.viewOnly=user.app_metadata?.production_view_only===true;
+  productionAdvanceContext.canApprove=!productionAdvanceContext.viewOnly&&data.rol==='ADMINISTRADOR'&&user.email?.toLowerCase()==='juandiegoe@gmail.com';
   setProductionViewerMode(productionAdvanceContext.viewOnly);
-  const enabled=!productionAdvanceContext.viewOnly&&['ADMINISTRADOR','PRODUCCION_LECTURA'].includes(data.rol);
+  const enabled=!productionAdvanceContext.viewOnly&&['ADMINISTRADOR','PRODUCCION','PRODUCCION_LECTURA'].includes(data.rol);
   document.querySelector('#advancesNav')?.classList.toggle('hidden',!enabled);
   if(!enabled)return;
   await reloadProductionAdvances();
@@ -43,7 +47,7 @@ function showProductionAdvanceError(error){
 
 async function reloadProductionAdvances(){
   const profile=productionAdvanceContext.profile;
-  if(!profile || productionAdvanceContext.viewOnly || !['ADMINISTRADOR','PRODUCCION_LECTURA'].includes(profile.rol))return;
+  if(!profile || productionAdvanceContext.viewOnly || !['ADMINISTRADOR','PRODUCCION','PRODUCCION_LECTURA'].includes(profile.rol))return;
   const sequence=++productionAdvanceContext.sequence;
   const {data,error}=await db.from('solicitudes_avance_items').select(`
     id,item_id,estado_origen,estado_solicitado,estado,solicitante_id,creado_en,
@@ -54,7 +58,7 @@ async function reloadProductionAdvances(){
   if(error)throw error;
   productionAdvanceContext.requests=data||[];
   const nav=document.querySelector('#advancesNav');
-  if(nav)nav.textContent=`${profile.rol==='ADMINISTRADOR'?'Avances pendientes':'Mis avances'} (${productionAdvanceContext.requests.length})`;
+  if(nav)nav.textContent=`${canApproveProductionAdvances()?'Avances pendientes':'Mis avances'} (${productionAdvanceContext.requests.length})`;
   renderProductionAdvanceList();
   await document.querySelector('#drawer')._advances?.refresh();
 }
@@ -70,7 +74,7 @@ function showProductionAdvances(){
 function renderProductionAdvanceList(){
   const list=document.querySelector('#advancesList');
   if(!list)return;
-  const admin=productionAdvanceContext.profile?.rol==='ADMINISTRADOR';
+  const admin=canApproveProductionAdvances();
   list.innerHTML=productionAdvanceContext.requests.length?productionAdvanceContext.requests.map(request=>{
     const item=request.items_produccion;
     return `<article class="advance-request-card">
@@ -85,7 +89,7 @@ function renderProductionAdvanceList(){
 
 function reviewProductionAdvance(id,trigger){
   const request=productionAdvanceContext.requests.find(r=>r.id===id);
-  if(!request || productionAdvanceContext.profile?.rol!=='ADMINISTRADOR')return;
+  if(!request || !canApproveProductionAdvances())return;
   const drawer=document.querySelector('#drawer');
   const side=openMixtureSidePanel(drawer,{title:'Confirmar avance',trigger});
   if(!side)return;
@@ -122,10 +126,10 @@ function reviewProductionAdvance(id,trigger){
 
 async function mountProductionItemAdvances(drawer,order){
   const profile=productionAdvanceContext.profile;
-  if(!profile || !['ADMINISTRADOR','PRODUCCION_LECTURA'].includes(profile.rol))return;
+  if(!profile || !['ADMINISTRADOR','PRODUCCION','PRODUCCION_LECTURA'].includes(profile.rol))return;
   const card=drawer.querySelector('.drawer-card');
   const current=()=>drawer.querySelector('.drawer-card')===card;
-  const consultation=profile.rol==='PRODUCCION_LECTURA';
+  const consultation=!canApproveProductionAdvances();
   const renderItems=()=>{
     if(!current())return;
     drawer.querySelectorAll('#itemsList .item-card').forEach(itemCard=>{
