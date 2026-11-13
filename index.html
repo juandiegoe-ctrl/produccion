@@ -3055,6 +3055,18 @@ hr{display:none!important}
 .daily-choice{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:6px}
 #dailyPlan{width:min(1100px,95vw);max-height:90vh;border:1px solid #ccc;border-radius:14px;padding:24px;overflow:auto}
 #dailyPlan::backdrop{background:#0008}
+.daily-sheet-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px 0;border-bottom:2px solid #222;break-inside:avoid}
+.daily-sheet-logo{display:block;width:140px;height:auto;max-height:65px;object-fit:contain;object-position:left}
+#dailyPlan .daily-sheet-header h1{font-size:18px;margin:12px 0 0}
+.daily-sheet-date{text-align:right}
+.daily-sheet-date span{display:block;font-size:12px;margin-bottom:6px}
+.daily-sheet-date strong{display:block;font-size:36px;line-height:1.15;white-space:nowrap}
+.daily-extra-tasks{margin-top:24px;break-inside:avoid}
+#dailyPlan .daily-extra-tasks h2{font-size:18px;margin:0 0 5px}
+.daily-extra-tasks p{font-size:12px;color:#555;margin:0 0 6px}
+.daily-writing-line{height:32px;border-bottom:1px solid #aaa;display:flex;align-items:center;gap:10px}
+.daily-writing-line span{font-size:22px}
+@media(max-width:600px){.daily-sheet-header{gap:12px}.daily-sheet-date strong{font-size:26px}.daily-sheet-logo{width:110px}}
 .daily-toolbar{display:flex;justify-content:flex-end;gap:8px}
 #dailyPlan table{width:100%;border-collapse:collapse;font-size:13px}
 #dailyPlan th,#dailyPlan td{text-align:left;padding:9px;border:1px solid #ccc;overflow-wrap:anywhere}
@@ -3065,6 +3077,7 @@ hr{display:none!important}
   #dailyPlan::backdrop{display:none!important}
   #dailyPlan .no-print{display:none!important}
   #dailyPlan thead{display:table-header-group}
+  #dailyPlan .daily-sheet-date strong{font-size:36px!important}
 }
 </style>
 <link rel="stylesheet" href="css/mezclas.css">
@@ -3331,13 +3344,18 @@ function showDailyPlan(){
   if(!dialog){dialog=document.createElement('dialog');dialog.id='dailyPlan';document.body.append(dialog);}
   const rows=dailyPlanRows();
   dialog.innerHTML=`<div class="daily-toolbar no-print"><button id="closeDailyPlan" class="btn secondary">Cerrar</button><button id="printDailyPlan" class="btn primary" ${rows.length?'':'disabled'}>Imprimir / Guardar PDF</button></div>
-    <h1>Producción del día</h1><p>${esc(dailyPlanDate().split('-').reverse().join('/'))} · ${rows.length} ítems para intervenir</p>
-    <p class="no-print">Los ítems siguen pendientes hasta que se registre su avance, aunque cambie el día. Selección guardada solo en este navegador. Desde las 8:00 p. m. (Colombia) se muestra la fecha del día siguiente. Marca la casilla con el icono de calendario en los ítems de cada orden. Los entregados y cerrados quedan fuera del listado.</p>
+    <header class="daily-sheet-header">
+      <div><img class="daily-sheet-logo" src="${esc(document.querySelector('.logo img').src)}" alt="Estona"><h1>Hoja de producción</h1></div>
+      <div class="daily-sheet-date"><span>Actividades del día</span><strong>${esc(dailyPlanDate().split('-').reverse().join('/'))}</strong></div>
+    </header>
     ${Object.entries(DAILY_PLAN_STAGES).map(([stage,label])=>{
       const group=rows.filter(row=>row.item.estado===stage);
       if(!group.length)return '';
       return `<section class="daily-stage"><h2>${label} · ${group.length}</h2><table><thead><tr><th>OP / Cliente</th><th>Ítem / Producto</th><th>Dimensiones / Color</th><th>Peso</th><th>Comentarios</th><th class="no-print">Selección</th></tr></thead><tbody>${group.map(({order,item})=>`<tr><td>${esc(order.numero_op)}<br>${esc(order.cliente)}</td><td>${esc(item.codigo)}<br>${esc(item.catalogo_productos?.nombre||item.descripcion)}</td><td>${esc(item.dimensiones||'—')}<br>${esc(item.colores||'—')}</td><td>${Number(item.peso_kg||0).toLocaleString('es-CO')} kg</td><td>${esc(item.comentarios||'—')}</td><td class="no-print"><button data-daily-remove="${esc(item.id)}">Quitar</button></td></tr>`).join('')}</tbody></table></section>`;
-    }).join('')||'<p>No hay ítems seleccionados para esta fecha.</p>'}`;
+     }).join('')||'<p>No hay ítems seleccionados para esta fecha.</p>'}
+    <section class="daily-extra-tasks"><h2>Otras actividades</h2><p>Aseo, barrer u otras tareas</p>
+      ${Array.from({length:5},()=>'<div class="daily-writing-line"><span aria-hidden="true">□</span></div>').join('')}
+    </section>`;
   dialog.querySelector('#closeDailyPlan').onclick=()=>dialog.close();
   dialog.querySelector('#printDailyPlan').onclick=()=>{
     document.body.classList.add('printing-daily-plan');
