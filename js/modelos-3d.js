@@ -60,7 +60,13 @@ async function openItemModel3D(order,item){
       viewer.setAttribute('alt',`Modelo 3D de ${item.codigo||'ítem'}`);
       viewer.setAttribute('camera-controls','');
       viewer.setAttribute('touch-action','pan-y');
-      viewer.setAttribute('shadow-intensity','1');
+      viewer.setAttribute('environment-image','neutral');
+      viewer.setAttribute('tone-mapping','aces');
+      viewer.setAttribute('exposure','0.8');
+      viewer.setAttribute('shadow-intensity','0.6');
+      viewer.setAttribute('shadow-softness','0.65');
+      viewer.setAttribute('camera-orbit','35deg 60deg auto');
+      viewer.setAttribute('field-of-view','35deg');
       viewer.setAttribute('src',bucket.getPublicUrl(path).data.publicUrl);
       viewer.addEventListener('load',()=>{if(active())status.textContent='';});
       viewer.addEventListener('error',()=>{if(active())status.textContent='No se pudo abrir el modelo. Comprueba el archivo GLB y su acceso en Supabase.';});
