@@ -1,11 +1,14 @@
 // Draw only geometric creases: coplanar GLB triangle edges stay hidden.
 export async function createItemLineViewer(host,url,{onMeasure=()=>{}}={}){
-  const [THREE,{GLTFLoader},{OrbitControls},{DRACOLoader},{MeshoptDecoder}]=await Promise.all([
+  const [THREE,{GLTFLoader},{OrbitControls},{DRACOLoader},{MeshoptDecoder},{LineSegments2},{LineSegmentsGeometry},{LineMaterial}]=await Promise.all([
     import('https://cdn.jsdelivr.net/npm/three@0.172.0/+esm'),
     import('https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/loaders/GLTFLoader.js/+esm'),
     import('https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/controls/OrbitControls.js/+esm'),
     import('https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/loaders/DRACOLoader.js/+esm'),
-    import('https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/libs/meshopt_decoder.module.js/+esm')
+    import('https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/libs/meshopt_decoder.module.js/+esm'),
+    import('https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/lines/LineSegments2.js/+esm'),
+    import('https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/lines/LineSegmentsGeometry.js/+esm'),
+    import('https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/lines/LineMaterial.js/+esm')
   ]);
   if(!host.isConnected)throw Error('Visor cerrado.');
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
@@ -30,9 +33,9 @@ export async function createItemLineViewer(host,url,{onMeasure=()=>{}}={}){
   let selection=null;
   const events=new AbortController();
   const label=document.createElement('div');label.className='item-edge-label';label.hidden=true;host.append(label);
-  const highlightGeometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
-  const highlightMaterial=new THREE.LineBasicMaterial({color:0x168642,linewidth:2});
-  const highlight=new THREE.LineSegments(highlightGeometry,highlightMaterial);highlight.visible=false;highlight.renderOrder=10;highlightMaterial.depthWrite=false;scene.add(highlight);
+  const highlightGeometry=new LineSegmentsGeometry().setPositions([0,0,0,0,0,0]);
+  const highlightMaterial=new LineMaterial({color:0x00a64b,linewidth:5,worldUnits:false,depthWrite:false});
+  const highlight=new LineSegments2(highlightGeometry,highlightMaterial);highlight.visible=false;highlight.renderOrder=10;highlightMaterial.depthWrite=false;scene.add(highlight);
   geometries.add(highlightGeometry);materials.add(highlightMaterial);
   const clearMeasurement=()=>{selection=null;highlight.visible=false;label.hidden=true;onMeasure(null);render();};
   const render=()=>{
@@ -127,7 +130,7 @@ export async function createItemLineViewer(host,url,{onMeasure=()=>{}}={}){
         const centimeters=a.distanceTo(b)*100;
         const text=`${new Intl.NumberFormat('es-CO',{maximumFractionDigits:2}).format(centimeters)} cm`;
         selection={midpoint:a.clone().add(b).multiplyScalar(.5)};
-        highlightGeometry.setFromPoints([a,b]);highlightGeometry.computeBoundingSphere();highlight.visible=true;
+        highlightGeometry.setPositions([a.x,a.y,a.z,b.x,b.y,b.z]);highlightGeometry.computeBoundingSphere();highlight.visible=true;
         label.textContent=text;label.hidden=false;
         onMeasure({centimeters,text});render();return;
       }
@@ -150,7 +153,7 @@ export async function createItemLineViewer(host,url,{onMeasure=()=>{}}={}){
     const resize=()=>{
       const width=host.clientWidth,height=host.clientHeight;
       if(!width||!height)return;
-      renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();render();
+      renderer.setSize(width,height,false);highlightMaterial.resolution.set(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();render();
     };
     observer=new ResizeObserver(resize);observer.observe(host);
     controls.addEventListener('change',render);controls.update();resize();
