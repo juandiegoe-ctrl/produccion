@@ -2,7 +2,7 @@ const sharedDaily={ready:false,error:'',pending:[],extras:{},drafts:{},userId:nu
 let sharedExtraTimer=null;
 let sharedExtraQueue=Promise.resolve();
 function canEditSharedDaily(){
-  return sharedDaily.ready&&!sharedDaily.error&&!productionAdvanceContext.viewOnly&&['ADMINISTRADOR','PRODUCCION'].includes(productionAdvanceContext.profile?.rol);
+  return sharedDaily.ready&&!sharedDaily.error&&canApproveProductionAdvances();
 }
 function sharedDailyError(error){
   if(['42P01','42883','PGRST202','PGRST205'].includes(error?.code))return 'Falta activar las actividades compartidas en Supabase: ejecuta db/actividades-compartidas.sql.';
