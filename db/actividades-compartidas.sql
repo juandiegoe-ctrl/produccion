@@ -7,8 +7,7 @@ returns boolean language sql stable security definer set search_path='' as $$
 $$;
 create or replace function public.puede_editar_actividades_produccion()
 returns boolean language sql stable security definer set search_path='' as $$
- select exists(select 1 from public.profiles where id=auth.uid() and activo
-   and rol::text in ('ADMINISTRADOR','PRODUCCION')) and not public.is_production_view_only();
+ select public.puede_aprobar_avances_produccion();
 $$;
 revoke all on function public.puede_ver_actividades_produccion() from public,anon;
 revoke all on function public.puede_editar_actividades_produccion() from public,anon;
