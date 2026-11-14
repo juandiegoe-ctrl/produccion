@@ -3141,6 +3141,35 @@ hr{display:none!important}
   html,body,.app,main{background:var(--bg)!important}
 }
 
+
+/* Compact order overview */
+@media screen{
+  #ordersView #kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;margin:0 0 20px!important;padding:12px 0;border-top:1px solid #dedee2;border-bottom:1px solid #dedee2}
+  #ordersView #kpis .kpi{min-height:0!important}
+  #ordersView #kpis .kpi small{font-size:9px!important;letter-spacing:.2px!important;margin-bottom:4px!important;line-height:1.3!important}
+  #ordersView #kpis .kpi strong{font-size:17px!important;line-height:1.2!important}
+  #ordersView>.top{align-items:center!important;margin-bottom:18px!important;gap:12px!important}
+  #ordersView .daily-header-actions{flex-wrap:nowrap;gap:8px}
+  #newOrder{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;font-size:26px!important;line-height:1!important;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+  #ordersView>.filters{grid-template-columns:minmax(0,1fr) 132px!important;max-width:650px;gap:10px!important;align-items:end!important}
+  #ordersView>.filters label{min-width:0!important;width:100%!important}
+  #ordersView>.filters input,#ordersView>.filters select{height:42px!important;font-size:14px!important}
+  .sidebar .nav button{display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important}
+}
+@media screen and (max-width:760px){
+  .sidebar .nav{display:flex!important;justify-content:center!important;gap:6px!important}
+  .sidebar .nav button{flex:1;max-width:180px;padding:8px!important;font-size:12px!important}
+  #ordersView>.top h1{font-size:23px!important}
+  #ordersView>.top p{font-size:11px!important}
+  #ordersView .daily-header-actions{gap:6px}
+  #ordersView .daily-date{padding:8px!important;min-width:0}
+  #ordersView #kpis{gap:8px!important;padding:10px 0;margin-bottom:16px!important}
+  #ordersView #kpis .kpi small{font-size:8px!important;min-height:21px}
+  #ordersView #kpis .kpi strong{font-size:16px!important}
+  #ordersView>.filters{grid-template-columns:minmax(0,1fr) 112px!important;gap:8px!important}
+  #ordersView>.filters input,#ordersView>.filters select{padding:8px!important;font-size:13px!important}
+}
+
 </style>
 <link rel="stylesheet" href="css/mezclas.css">
 <link rel="stylesheet" href="css/avances.css">
@@ -3170,16 +3199,16 @@ hr{display:none!important}
     <section id="ordersView">
       <header class="top">
         <div><h1>PRODUCCION ESTONA</h1><p>Control de fabricación por ítems.</p></div>
-        <div class="daily-header-actions"><button id="newOrder" class="btn primary">+ Nueva orden</button><button id="dailyPlanNav" class="btn secondary daily-date" type="button" aria-label="Mostrar actividades del día"></button></div>
+        <div class="daily-header-actions"><button id="newOrder" class="btn primary" type="button" aria-label="Nueva orden" title="Nueva orden">+</button><button id="dailyPlanNav" class="btn secondary daily-date" type="button" aria-label="Mostrar actividades del día"></button></div>
       </header>
       <section id="kpis" class="kpis"></section>
       <section class="filters">
         <label><span>Buscar</span><input id="search" placeholder="OP, cliente o producto"></label>
-        <label><span>Órdenes</span>
-          <select id="closedFilter">
-            <option value="open">Solo abiertas</option>
+        <label>
+          <select id="closedFilter" aria-label="Estado de las órdenes">
+            <option value="open">Abiertas</option>
             <option value="all">Todas</option>
-            <option value="closed">Solo cerradas</option>
+            <option value="closed">Cerradas</option>
           </select>
         </label>
       </section>
