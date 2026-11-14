@@ -328,6 +328,19 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
     finally{button.disabled=false;select.disabled=false}
     result.classList.remove('hidden');
   };
+  const openItemDosageHistory=(item,trigger)=>{
+    const rows=(drawer._itemDosageRecords||[]).filter(row=>row.item_id===item.id);
+    if(!rows.length)return;
+    const openRecord=id=>{
+      const button=Array.from(drawer.querySelectorAll('#orderDosageList [data-dosage-detail]')).find(button=>button.dataset.dosageDetail===id);
+      button?.click();
+    };
+    if(rows.length===1){openRecord(rows[0].id);return}
+    const side=openMixtureSidePanel(drawer,{title:'Registros de cargue · '+(item.codigo||'Ítem'),trigger});
+    if(!side)return;
+    side.body.innerHTML=rows.map(row=>`<button type="button" class="mixture-history-record" data-record-id="${esc(row.id)}"><span><strong>${esc(row.mezcla_nombre||'Mezcla')}</strong><small>${row.fecha_fundida?esc(new Date(row.fecha_fundida+'T12:00:00').toLocaleDateString('es-CO')):'Sin fecha'}</small></span><strong>${fmt(Number(row.total_kg)||0)} kg</strong><span aria-hidden="true">›</span></button>`).join('');
+    side.body.querySelectorAll('[data-record-id]').forEach(button=>button.onclick=()=>openRecord(button.dataset.recordId));
+  };
   const renderItems=()=>{
     if(!isCurrent())return;
     drawer.querySelectorAll('#itemsList [data-edit]').forEach(editButton=>{
@@ -361,6 +374,19 @@ async function mountProductionMixtures(drawer,order,{onChange=()=>{}}={}){
         finally{select.disabled=false;generate.disabled=false}
       };
       generate.onclick=()=>renderDosage(host,item);
+      const actions=document.createElement('div');
+      actions.className='mixture-item-buttons';
+      generate.before(actions);actions.append(generate);
+      if((drawer._itemDosageRecords||[]).some(row=>row.item_id===item.id)){
+        const history=document.createElement('button');
+        history.type='button';
+        history.className='btn secondary mixture-history';
+        history.title='Ver registros de cargue';
+        history.setAttribute('aria-label','Ver registros de cargue de '+(item.codigo||'ítem'));
+        history.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a9 9 0 1 1 .8 7M3 4v5h5"/><path d="m13 6-5 7h4l-1 5 6-8h-4l1-4z"/></svg>';
+        history.onclick=()=>openItemDosageHistory(item,history);
+        actions.append(history);
+      }
     });
   };
   const reload=async()=>{
