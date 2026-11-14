@@ -147,3 +147,14 @@
 }
 
 .mixture-cement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+
+/* Saved item batches remain accessible beside the generation action. */
+#items .mixture-item-buttons{display:flex;align-items:center;gap:5px}
+#items .item-work-row .mixture-item-controls{grid-template-columns:minmax(0,1fr) auto}
+#items .mixture-history{display:inline-flex;align-items:center;justify-content:center;width:32px!important;min-width:32px;height:32px!important;min-height:32px!important;padding:0!important;background:#fff4cf!important;border-color:#eadca5!important;color:#80611b!important}
+#items .mixture-history:hover{background:#ffedb0!important}
+#items .mixture-history:focus-visible{outline:2px solid #a67c20;outline-offset:2px}
+.mixture-history-record{display:flex;align-items:center;gap:12px;width:100%;padding:14px;margin-bottom:8px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;color:inherit;text-align:left;cursor:pointer}
+.mixture-history-record>span:first-child{flex:1;min-width:0;overflow-wrap:anywhere}
+.mixture-history-record small{display:block;margin-top:5px;color:var(--muted)}
+.mixture-history-record:hover{background:#fff9e6}
