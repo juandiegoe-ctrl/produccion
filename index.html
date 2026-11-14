@@ -3719,6 +3719,7 @@ async function openNew(){
   drawer._mixtures=null;
   drawer._advances=null;
   drawer._reloadDosageRecords=null;
+  drawer._itemDosageRecords=[];
   drawer.innerHTML=`<div class="drawer-card">
     <div class="drawer-head">
       <div><h2>Nueva orden</h2><p>Información general de la OP.</p></div>
@@ -3796,6 +3797,7 @@ async function openOrder(id){
   drawer._mixtures=null;
   drawer._advances=null;
   drawer._reloadDosageRecords=null;
+  drawer._itemDosageRecords=[];
   drawer.innerHTML=`<div class="drawer-card order-drawer">
     <div class="drawer-head">
       <div class="drawer-title">
@@ -4266,6 +4268,8 @@ async function openOrder(id){
     }
 
     const rows=data||[];
+    drawer._itemDosageRecords=rows;
+    drawer._mixtures?.renderItems();
     const totalFabricated=rows.reduce((sum,row)=>sum+Number(row.total_kg||0),0);
     const estimatedWeight=orderCostSummary(order).weight;
     const difference=totalFabricated-estimatedWeight;
