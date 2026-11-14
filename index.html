@@ -3150,7 +3150,6 @@ hr{display:none!important}
   #ordersView #kpis .kpi strong{font-size:17px!important;line-height:1.2!important}
   #ordersView>.top{align-items:center!important;margin-bottom:18px!important;gap:12px!important}
   #ordersView .daily-header-actions{flex-wrap:nowrap;gap:8px}
-  #newOrder{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;font-size:26px!important;line-height:1!important;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
   #ordersView>.filters{grid-template-columns:minmax(0,1fr) 132px!important;max-width:650px;gap:10px!important;align-items:end!important}
   #ordersView>.filters label{min-width:0!important;width:100%!important}
   #ordersView>.filters input,#ordersView>.filters select{height:42px!important;font-size:14px!important}
@@ -3199,7 +3198,7 @@ hr{display:none!important}
     <section id="ordersView">
       <header class="top">
         <div><h1>PRODUCCION ESTONA</h1><p>Control de fabricación por ítems.</p></div>
-        <div class="daily-header-actions"><button id="newOrder" class="btn primary" type="button" aria-label="Nueva orden" title="Nueva orden">+</button><button id="dailyPlanNav" class="btn secondary daily-date" type="button" aria-label="Mostrar actividades del día"></button></div>
+        <div class="daily-header-actions"><button id="dailyPlanNav" class="btn secondary daily-date" type="button" aria-label="Mostrar actividades del día"></button></div>
       </header>
       <section id="kpis" class="kpis"></section>
       <section class="filters">
@@ -6139,7 +6138,6 @@ async function init(){
     $('#manufactureProduct').onchange=()=>renderManufactureView();
     $('#manufactureStateFilter').onchange=()=>renderManufactureView();
     if($('#dosageDate')) $('#dosageDate').value=new Date().toISOString().slice(0,10);
-    $('#newOrder').onclick=openNew;
     $('#showEmployeeForm').onclick=()=>{
       $('#employeeForm').classList.remove('hidden');
       setTimeout(()=>$('#employeeName')?.focus(),50);
