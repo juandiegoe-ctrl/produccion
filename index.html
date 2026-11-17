@@ -3169,6 +3169,15 @@ hr{display:none!important}
   #ordersView>.filters input,#ordersView>.filters select{padding:8px!important;font-size:13px!important}
 }
 
+
+/* Compact information status in both order list layouts. */
+.order-info-code{display:flex;align-items:center;gap:8px}
+#list .order-info-indicator{display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;min-height:28px;padding:0;border:1px solid;border-radius:50%;font-size:16px;font-weight:800;line-height:1;cursor:pointer}
+#list .order-info-complete{color:#187442;background:#e7f5ec;border-color:#b5ddc3}
+#list .order-info-missing{color:#97620c;background:#fff5dc;border-color:#ecd59d}
+#list .order-info-indicator:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+#list tr.row .mobile-order-summary{grid-template-columns:minmax(0,1fr) 28px auto 16px}
+
 </style>
 <link rel="stylesheet" href="css/mezclas.css">
 <link rel="stylesheet" href="css/avances.css">
@@ -3606,6 +3615,27 @@ function renderKpis(){
     ['Avance producción',productionProgress]
   ].map(([l,v])=>`<div class="kpi"><small>${l}</small><strong>${v}</strong></div>`).join('');
 }
+function orderMissingInformation(order){
+  const missing=[];
+  for(const [field,label] of [['numero_op','Número de orden'],['cliente','Cliente'],['producto','Producto'],['fecha_inicio','Fecha de inicio'],['fecha_entrega','Fecha de entrega']]){
+    if(!String(order[field]??'').trim())missing.push(label);
+  }
+  const items=order.items||[];
+  if(!items.length)missing.push('Ítems');
+  items.forEach((item,index)=>{
+    const fields=[];
+    const weight=Number(item.peso_kg);
+    if(!Number.isFinite(weight)||weight<=0)fields.push('peso');
+    if(!item.mezcla_id)fields.push('mezcla asignada');
+    if(fields.length)missing.push('Ítem '+(item.codigo||index+1)+': '+fields.join(' y '));
+  });
+  return missing;
+}
+function orderInformationIndicator(order){
+  const missing=orderMissingInformation(order);
+  const label=missing.length?'Información faltante: '+missing.join('; '):'Información completa';
+  return `<button type="button" class="order-info-indicator ${missing.length?'order-info-missing':'order-info-complete'}" data-order-info="${esc(order.id)}" aria-label="${esc(label)}" title="${esc(label)}"><span aria-hidden="true">${missing.length?'!':'✓'}</span></button>`;
+}
 function renderList(){
   const rows=filtered();
   $('#list').innerHTML=rows.length?`<div class="list-wrap"><table>
@@ -3619,10 +3649,11 @@ function renderList(){
           <strong>${esc(order.numero_op||'SIN OP')}</strong>
           <span>${esc(order.cliente||order.producto||'—')}</span>
         </div>
+        ${orderInformationIndicator(order)}
         <span class="order-status-badge ${order.cerrada?'order-status-closed':'order-status-open'}">${order.cerrada?'CERRADA':'ABIERTA'}</span>
         <span class="mobile-order-arrow">›</span>
       </td>
-      <td data-label="OP"><strong>${esc(order.numero_op||'SIN OP')}</strong></td>
+      <td data-label="OP"><div class="order-info-code"><strong>${esc(order.numero_op||'SIN OP')}</strong>${orderInformationIndicator(order)}</div></td>
       <td data-label="Estado"><span class="order-status-badge ${order.cerrada?'order-status-closed':'order-status-open'}">${order.cerrada?'CERRADA':'ABIERTA'}</span></td>
       <td data-label="Cliente">${esc(order.cliente||'—')}</td>
       <td data-label="Producto">${esc(order.producto||'—')}</td>
@@ -3634,6 +3665,15 @@ function renderList(){
     </tr>`).join('')}</tbody>
   </table></div>`:`<div class="empty">No hay órdenes de producción.</div>`;
 
+  $('#list').querySelectorAll('[data-order-info]').forEach(button=>{
+    button.onclick=event=>{
+      event.stopPropagation();
+      const order=rows.find(order=>order.id===button.dataset.orderInfo);
+      if(!order)return;
+      const missing=orderMissingInformation(order);
+      alert((order.numero_op||'Orden')+' · '+(missing.length?'Información faltante:\n\n• '+missing.join('\n• '):'Información completa ✓'));
+    };
+  });
   document.querySelectorAll('.row').forEach(row=>{
     row.onclick=()=>openOrder(row.dataset.id);
   });
@@ -5314,7 +5354,7 @@ async function openOrder(id){
   await mountProductionMixtures(drawer,order,{onChange:state=>{
     documentRecipesLoading=!!state.loading;
     documentRecipesError=state.error||null;
-    if(state.recipes)documentRecipes=state.recipes;
+    if(state.recipes){documentRecipes=state.recipes;renderList()}
     renderDocument();
   }});
   await mountProductionItemAdvances(drawer,order);
